@@ -6,6 +6,8 @@
   --surface: rgba(255, 255, 255, .86);
   --text-secondary: #625c6b;
   --shadow: 0 4px 18px rgba(80, 70, 110, .08);
+  --button-start: #a58acb;
+  --button-end: #8060b1;
   --image: url('./public/assets/purple_20261022224513.png');
   --image-ratio: calc(1672 / 941);
 }
@@ -15,6 +17,8 @@ body[data-theme="blue"] {
   --primary-dark: #347fa4;
   --primary-soft: #dff5fc;
   --scene: #f0fbff;
+  --button-start: #69bad4;
+  --button-end: #347fa4;
   --image: url('./public/assets/blue_20261022224637.png');
   --image-ratio: calc(941 / 545);
 }
@@ -24,6 +28,8 @@ body[data-theme="green"] {
   --primary-dark: #347f65;
   --primary-soft: #e1f7e9;
   --scene: #f1fff7;
+  --button-start: #72bf99;
+  --button-end: #347f65;
   --image: url('./public/assets/green_20261022224836.png');
   --image-ratio: calc(938 / 545);
 }
@@ -33,6 +39,8 @@ body[data-theme="yellow"] {
   --primary-dark: #95743f;
   --primary-soft: #fff2c8;
   --scene: #fffbf0;
+  --button-start: #dcc16c;
+  --button-end: #a38038;
   --image: url('./public/assets/yellow_20261022224915.png');
   --image-ratio: calc(938 / 545);
 }
@@ -82,27 +90,30 @@ body[data-theme="yellow"] {
 }
 
 #home {
-  min-height: 100svh;
+  min-height: max(620px, calc(100svh - min(100vw, 430px) * var(--image-ratio) * .3 - 84px));
   color: var(--primary-dark);
   padding-top: env(safe-area-inset-top);
 }
 
 #home .hero {
   padding-top: 82px;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
 }
 
 #home .hero h1 {
   font-size: 29px;
   line-height: 1.3;
-  margin: 0 0 4px;
+  font-weight: 400;
+  letter-spacing: .04em;
+  margin: 0 0 8px;
   color: var(--primary-dark);
 }
 
 #home .hero p {
   font-size: 14px;
-  line-height: 1.5;
-  color: var(--text-secondary);
+  line-height: 1.65;
+  letter-spacing: .025em;
+  color: var(--primary-dark);
 }
 
 #home .entry {
@@ -123,6 +134,8 @@ body[data-theme="yellow"] {
 #home .entry input {
   height: 46px;
   border-radius: 13px;
+  border-color: color-mix(in srgb, var(--primary-dark) 18%, white);
+  box-shadow: 0 3px 8px rgba(80, 70, 110, .05);
   font-size: 16px;
   color: var(--text-secondary);
   background: var(--surface);
@@ -134,10 +147,17 @@ body[data-theme="yellow"] {
   padding: 12px 16px;
   margin-top: 16px;
   border-radius: 999px;
-  background: var(--primary);
-  color: #302a38;
+  background: linear-gradient(110deg, var(--button-start), var(--button-end));
+  color: #fff;
   box-shadow: var(--shadow);
   font-size: 16px;
+  letter-spacing: .08em;
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+#home .primary:not(:disabled):active {
+  transform: translateY(1px);
+  box-shadow: 0 2px 6px rgba(80, 70, 110, .1);
 }
 
 #home .primary:disabled {
@@ -148,7 +168,7 @@ body[data-theme="yellow"] {
 }
 
 #home .dashboard {
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, .95fr) minmax(0, 1.05fr);
   gap: 10px;
   align-items: stretch;
 }
@@ -161,16 +181,17 @@ body[data-theme="yellow"] {
 }
 
 #home .totals {
-  grid-template-rows: 1fr 1fr;
+  grid-template-rows: 1.15fr 1fr;
 }
 
 #home .total {
   min-height: 105px;
-  padding: 14px 8px;
+  padding: 14px 12px;
 }
 
 #home .card h2 {
   color: var(--primary-dark);
+  font-weight: 400;
 }
 
 #home .total h2 {
@@ -183,7 +204,8 @@ body[data-theme="yellow"] {
   color: var(--primary-dark);
   font-size: clamp(18px, 5vw, 24px);
   font-variant-numeric: tabular-nums;
-  letter-spacing: -.04em;
+  font-weight: 400;
+  letter-spacing: -.025em;
 }
 
 #home .mini-seal {
@@ -192,12 +214,12 @@ body[data-theme="yellow"] {
 
 #home .recent {
   min-width: 0;
-  min-height: 220px;
+  min-height: 230px;
   padding: 10px;
 }
 
 #home .card-title h2 {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 #home .dots {
@@ -209,7 +231,7 @@ body[data-theme="yellow"] {
 }
 
 #home .log-items {
-  max-height: 160px;
+  max-height: 166px;
   overflow-y: auto;
   margin-top: 0;
 }
@@ -230,7 +252,7 @@ body[data-theme="yellow"] {
   width: 58%;
   max-width: 215px;
   min-height: 80px;
-  border-radius: 24px;
+  border-radius: 32px 28px 30px 26px;
   padding: 16px 12px;
   font-size: 13px;
   line-height: 1.65;
@@ -287,5 +309,11 @@ button:focus-visible,
 
   #home .speech {
     font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #home .primary {
+    transition: none;
   }
 }
