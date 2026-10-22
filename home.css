@@ -6,7 +6,8 @@
   --surface: rgba(255, 255, 255, .86);
   --text-secondary: #625c6b;
   --shadow: 0 4px 18px rgba(80, 70, 110, .08);
-  --image: url('./purple_20261022224513.png');
+  --image: url('./public/assets/purple_20261022224513.png');
+  --image-ratio: calc(1672 / 941);
 }
 
 body[data-theme="blue"] {
@@ -14,7 +15,8 @@ body[data-theme="blue"] {
   --primary-dark: #347fa4;
   --primary-soft: #dff5fc;
   --scene: #f0fbff;
-  --image: url('./blue_20261022224637.png');
+  --image: url('./public/assets/blue_20261022224637.png');
+  --image-ratio: calc(941 / 545);
 }
 
 body[data-theme="green"] {
@@ -22,7 +24,8 @@ body[data-theme="green"] {
   --primary-dark: #347f65;
   --primary-soft: #e1f7e9;
   --scene: #f1fff7;
-  --image: url('./green_20261022224836.png');
+  --image: url('./public/assets/green_20261022224836.png');
+  --image-ratio: calc(938 / 545);
 }
 
 body[data-theme="yellow"] {
@@ -30,7 +33,13 @@ body[data-theme="yellow"] {
   --primary-dark: #95743f;
   --primary-soft: #fff2c8;
   --scene: #fffbf0;
-  --image: url('./yellow_20261022224915.png');
+  --image: url('./public/assets/yellow_20261022224915.png');
+  --image-ratio: calc(938 / 545);
+}
+
+.background {
+  background-size: 100% auto;
+  user-select: none;
 }
 
 .app[data-page="home"] {
@@ -38,17 +47,42 @@ body[data-theme="yellow"] {
   overflow: visible;
 }
 
-/* 白いキャラクターの正式素材が確認できるまでは旧画像を使わない。 */
+/* 原画を等比表示し、上下の帯だけを独立配置する。画像ファイルは加工しない。 */
 .app[data-page="home"] > .background {
-  display: none;
+  inset: 0 0 calc(84px + env(safe-area-inset-bottom));
+  background-image: none;
+  user-select: none;
+}
+
+.app[data-page="home"] > .background::before,
+.app[data-page="home"] > .background::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  background-image: var(--image);
+  background-size: 100% auto;
+  background-repeat: no-repeat;
+}
+
+.app[data-page="home"] > .background::before {
+  top: 0;
+  height: calc(min(100vw, 430px) * var(--image-ratio) * .12);
+  background-position: center top;
+}
+
+.app[data-page="home"] > .background::after {
+  bottom: 0;
+  height: calc(min(100vw, 430px) * var(--image-ratio) * .3);
+  background-position: center bottom;
 }
 
 .app[data-page="home"] .content {
-  padding: 0 16px calc(84px + env(safe-area-inset-bottom));
+  padding: 0 16px calc(min(100vw, 430px) * var(--image-ratio) * .3 + 84px + env(safe-area-inset-bottom));
 }
 
 #home {
-  min-height: max(100svh, calc(min(100vw, 430px) * 941 / 418));
+  min-height: 100svh;
   color: var(--primary-dark);
   padding-top: env(safe-area-inset-top);
 }

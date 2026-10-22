@@ -75,4 +75,3 @@ new ResizeObserver(fitTotals).observe(document.querySelector('#home .dashboard')
 updateSubmitState();
 updateCurrentTab();
 fitTotals();
-console.warn('ホーム背景は暫定CSS表示です。白いキャラクターの正式画像、参考モックアップ、利用許諾済みのにくまるフォントが必要です。');
