@@ -230,7 +230,11 @@
 }
 
 .google-button {
-  background: linear-gradient(110deg, var(--primary), var(--button-start));
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--primary-dark) 94%, black),
+    color-mix(in srgb, var(--primary-dark) 82%, black)
+  );
   color: #fff;
   box-shadow: var(--shadow);
 }
