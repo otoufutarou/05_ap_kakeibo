@@ -23,7 +23,7 @@ create table if not exists public.user_settings (
   updated_at timestamptz not null default now()
 );
 
-create or replace function public.set_updated_at()
+create or replace function public.p_kakeibo_set_updated_at()
 returns trigger
 language plpgsql
 set search_path = ''
@@ -34,17 +34,18 @@ begin
 end;
 $$;
 
-drop trigger if exists expenses_set_updated_at on public.expenses;
-create trigger expenses_set_updated_at
+drop trigger if exists p_kakeibo_expenses_set_updated_at on public.expenses;
+create trigger p_kakeibo_expenses_set_updated_at
   before update on public.expenses
-  for each row execute function public.set_updated_at();
+  for each row execute function public.p_kakeibo_set_updated_at();
 
-drop trigger if exists user_settings_set_updated_at on public.user_settings;
-create trigger user_settings_set_updated_at
+drop trigger if exists p_kakeibo_user_settings_set_updated_at on public.user_settings;
+create trigger p_kakeibo_user_settings_set_updated_at
   before update on public.user_settings
-  for each row execute function public.set_updated_at();
+  for each row execute function public.p_kakeibo_set_updated_at();
 
-revoke all on function public.set_updated_at() from public, anon, authenticated;
+revoke all on function public.p_kakeibo_set_updated_at() from public, anon;
+grant execute on function public.p_kakeibo_set_updated_at() to authenticated;
 
 alter table public.expenses enable row level security;
 alter table public.user_settings enable row level security;
@@ -53,49 +54,49 @@ revoke all on public.expenses, public.user_settings from public, anon, authentic
 grant select, insert, update, delete on public.expenses to authenticated;
 grant select, insert, update, delete on public.user_settings to authenticated;
 
-drop policy if exists "Users can read own expenses" on public.expenses;
-create policy "Users can read own expenses"
+drop policy if exists "p_kakeibo_expenses_select_owner" on public.expenses;
+create policy "p_kakeibo_expenses_select_owner"
   on public.expenses for select to authenticated
   using ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can insert own expenses" on public.expenses;
-create policy "Users can insert own expenses"
+drop policy if exists "p_kakeibo_expenses_insert_owner" on public.expenses;
+create policy "p_kakeibo_expenses_insert_owner"
   on public.expenses for insert to authenticated
   with check ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can update own expenses" on public.expenses;
-create policy "Users can update own expenses"
+drop policy if exists "p_kakeibo_expenses_update_owner" on public.expenses;
+create policy "p_kakeibo_expenses_update_owner"
   on public.expenses for update to authenticated
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can delete own expenses" on public.expenses;
-create policy "Users can delete own expenses"
+drop policy if exists "p_kakeibo_expenses_delete_owner" on public.expenses;
+create policy "p_kakeibo_expenses_delete_owner"
   on public.expenses for delete to authenticated
   using ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can read own settings" on public.user_settings;
-create policy "Users can read own settings"
+drop policy if exists "p_kakeibo_settings_select_owner" on public.user_settings;
+create policy "p_kakeibo_settings_select_owner"
   on public.user_settings for select to authenticated
   using ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can insert own settings" on public.user_settings;
-create policy "Users can insert own settings"
+drop policy if exists "p_kakeibo_settings_insert_owner" on public.user_settings;
+create policy "p_kakeibo_settings_insert_owner"
   on public.user_settings for insert to authenticated
   with check ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can update own settings" on public.user_settings;
-create policy "Users can update own settings"
+drop policy if exists "p_kakeibo_settings_update_owner" on public.user_settings;
+create policy "p_kakeibo_settings_update_owner"
   on public.user_settings for update to authenticated
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
-drop policy if exists "Users can delete own settings" on public.user_settings;
-create policy "Users can delete own settings"
+drop policy if exists "p_kakeibo_settings_delete_owner" on public.user_settings;
+create policy "p_kakeibo_settings_delete_owner"
   on public.user_settings for delete to authenticated
   using ((select auth.uid()) = user_id);
 
-create or replace function public.sync_expenses(p_expenses jsonb, p_expected jsonb)
+create or replace function public.p_kakeibo_sync_expenses(p_expenses jsonb, p_expected jsonb)
 returns setof public.expenses
 language plpgsql
 set search_path = ''
@@ -238,5 +239,5 @@ begin
 end;
 $$;
 
-revoke all on function public.sync_expenses(jsonb, jsonb) from public, anon, authenticated;
-grant execute on function public.sync_expenses(jsonb, jsonb) to authenticated;
+revoke all on function public.p_kakeibo_sync_expenses(jsonb, jsonb) from public, anon, authenticated;
+grant execute on function public.p_kakeibo_sync_expenses(jsonb, jsonb) to authenticated;

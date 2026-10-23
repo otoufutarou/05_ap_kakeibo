@@ -63,7 +63,7 @@ export async function loadAccountData(client) {
 
 export async function syncAccountExpenses(client, desired, expected) {
   const safeExpenses = validateExpenses(desired);
-  const { data, error } = await client.rpc("sync_expenses", {
+  const { data, error } = await client.rpc("p_kakeibo_sync_expenses", {
     p_expenses: safeExpenses.map(toRow),
     p_expected: expected.map((expense) => ({
       source_expense_id: expense.id,

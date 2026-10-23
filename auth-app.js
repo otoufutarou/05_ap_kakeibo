@@ -102,6 +102,10 @@ async function flushPending(pending) {
       }
       setStatus(pendingTheme ? "記録は同期済みですが、テーマ設定は未保存です。" : "クラウド保存済み・同期済み", Boolean(pendingTheme));
     } else {
+      if (pendingSave) {
+        pendingSave.expected = baseline.map((item) => ({ id: item.id, updatedAt: item.updatedAt }));
+        writePending(activeUser.id, pendingSave);
+      }
       setStatus("変更を順番にクラウドへ保存しています…");
     }
   } catch (error) {
@@ -119,7 +123,11 @@ async function flushPending(pending) {
 
 function queueSave(expenses) {
   if (!activeUser) return;
-  const item = { generation: ++generation, expenses: cloneExpenses(expenses), expected: null };
+  const item = {
+    generation: ++generation,
+    expenses: cloneExpenses(expenses),
+    expected: baseline.map((expense) => ({ id: expense.id, updatedAt: expense.updatedAt })),
+  };
   pendingSave = item;
   if (!writePending(activeUser.id, item)) {
     setStatus("未保存の変更を端末に退避できません。ログアウトせず通信を確認してください。", true);
