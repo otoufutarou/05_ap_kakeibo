@@ -19,6 +19,13 @@
           <label>なにに<input id="expense-name" maxlength="100" placeholder="たとえば カフェ"></label>
           <label>いくら<input id="expense-amount" type="text" inputmode="numeric" pattern="[0-9]{1,8}" maxlength="8" placeholder="¥ 0" required></label>
         </div>
+        <label class="date-label">何日に
+          <span class="date-control">
+            <span class="date-display" aria-hidden="true"></span>
+            <svg class="date-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></svg>
+            <input id="expense-date" class="date-input" type="date" required aria-label="何日に">
+          </span>
+        </label>
         <button class="primary" type="submit" disabled>登録する</button>
       </form>
       <section class="dashboard" aria-label="集計と直近のログ">
@@ -44,7 +51,7 @@
         <div class="calendar-heading"><button id="prev-month" aria-label="前月">‹</button><h2 id="calendar-title"></h2><button id="next-month" aria-label="翌月">›</button></div>
         <div class="calendar-grid" id="calendar-grid"></div>
       </article>
-      <article class="card calendar-detail"><h2 id="selected-date-title"></h2><div id="selected-date-list"></div></article>
+      <article class="card calendar-detail"><h2 id="selected-date-title"></h2><p id="selected-date-total"></p><div id="selected-date-list"></div><button type="button" class="secondary" id="calendar-add">支出を追加</button></article>
     </section>
     <section class="page" id="charts">
       <div class="page-heading"><h1>支出の変遷</h1></div>
@@ -74,6 +81,13 @@
     <p class="edit-date" id="edit-date"></p>
     <label>なにに<input id="edit-name" placeholder="たとえば カフェ"></label>
     <label>いくら<input id="edit-amount" type="text" inputmode="numeric" pattern="[0-9]+" required></label>
+    <label>何日に
+      <span class="date-control">
+        <span class="date-display" aria-hidden="true"></span>
+        <svg class="date-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18"/></svg>
+        <input id="edit-expense-date" class="date-input" type="date" required aria-label="何日に">
+      </span>
+    </label>
     <p id="edit-feedback" class="edit-feedback" role="alert"></p>
     <div class="edit-actions">
       <button type="button" class="secondary" id="edit-cancel">キャンセル</button>
@@ -82,6 +96,7 @@
     <button type="button" class="edit-delete" id="edit-delete">この記録を削除</button>
   </form>
 </dialog>
+<script src="dates.js"></script>
 <script src="expenses.js"></script>
 <script src="app.js"></script>
 <script src="home.js"></script>

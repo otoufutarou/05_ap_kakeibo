@@ -6,6 +6,7 @@ const editor = document.querySelector('#expense-editor');
 const editForm = document.querySelector('#edit-expense-form');
 const editName = document.querySelector('#edit-name');
 const editAmount = document.querySelector('#edit-amount');
+const editExpenseDate = document.querySelector('#edit-expense-date');
 const editFeedback = document.querySelector('#edit-feedback');
 editForm.setAttribute('aria-describedby', editFeedback.id);
 let editingExpense = null;
@@ -17,6 +18,7 @@ function openExpenseEditor(expense, opener) {
   editName.value = expense.name;
   editAmount.value = String(expense.amount);
   editAmount.setCustomValidity('');
+  setDateInput(editExpenseDate, expense.date);
   document.querySelector('#edit-date').textContent = `${expense.date.replaceAll('-', '/')} の記録`;
   editFeedback.textContent = '';
   editor.showModal();
@@ -41,6 +43,7 @@ editor.addEventListener('close', () => {
 });
 editForm.addEventListener('input', () => {
   editAmount.setCustomValidity('');
+  editExpenseDate.setCustomValidity('');
   editFeedback.textContent = '';
 });
 editForm.addEventListener('submit', event => {
@@ -48,13 +51,15 @@ editForm.addEventListener('submit', event => {
   const name = editName.value.trim() || 'なにか';
   const amount = Number(editAmount.value);
   editAmount.setCustomValidity(validExpenseAmount(editAmount.value) ? '' : '1円以上の整数金額を入力してください。');
+  editExpenseDate.setCustomValidity(validExpenseDate(editExpenseDate.value) ? '' : '正しい日付を選択してください。');
   if (!editForm.reportValidity()) return;
   const original = editingExpense;
   if (!original || !expenses.includes(original)) return;
   const updated = {
     ...original,
     name,
-    amount
+    amount,
+    date: editExpenseDate.value
   };
   try {
     persistExpenses(expenses.map(item => item === original ? updated : item));

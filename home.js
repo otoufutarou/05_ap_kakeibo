@@ -3,6 +3,7 @@ appShell.dataset.page = 'home';
 
 const homeForm = document.querySelector('#expense-form');
 const amountInput = document.querySelector('#expense-amount');
+const dateInput = document.querySelector('#expense-date');
 const submitButton = homeForm.querySelector('[type="submit"]');
 const feedback = document.createElement('p');
 feedback.className = 'form-feedback';
@@ -24,6 +25,7 @@ homeForm.addEventListener('input', () => {
 const originalSubmit = homeForm.onsubmit;
 homeForm.onsubmit = event => {
   event.preventDefault();
+  dateInput.setCustomValidity(validExpenseDate(dateInput.value) ? '' : '正しい日付を選択してください。');
   if (submitButton.disabled || !homeForm.reportValidity()) return;
   const previousExpenses = expenses.slice();
   submitButton.disabled = true;
@@ -42,6 +44,16 @@ homeForm.onsubmit = event => {
 document.querySelectorAll('[data-go]').forEach(button => {
   button.addEventListener('click', () => {
     appShell.dataset.page = button.dataset.go;
+    updateCurrentTab();
+    fitTotals();
+  });
+
+  document.querySelector('#calendar-add').addEventListener('click', () => {
+    setDateInput(dateInput, selectedDate);
+    navigate('home');
+    appShell.dataset.page = 'home';
+    feedback.textContent = '';
+    updateSubmitState();
     updateCurrentTab();
     fitTotals();
   });
