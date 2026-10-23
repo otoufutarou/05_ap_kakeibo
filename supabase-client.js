@@ -7,7 +7,8 @@ function isPublishableKey(key) {
   if (!key.startsWith("eyJ")) return false;
   try {
     const payload = key.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    const role = JSON.parse(atob(payload)).role;
+    const paddedPayload = payload.padEnd(payload.length + (4 - payload.length % 4) % 4, "=");
+    const role = JSON.parse(atob(paddedPayload)).role;
     return role === "anon";
   } catch {
     return false;

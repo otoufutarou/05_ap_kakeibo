@@ -8,7 +8,7 @@ values
   ('20000000-0000-4000-8000-000000000002', 'authenticated', 'authenticated', 'rls-b@example.invalid', '', now())
 on conflict (id) do nothing;
 
-select plan(9);
+select plan(11);
 set local role authenticated;
 
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
@@ -34,11 +34,17 @@ select is((select count(*) from public.user_settings), 1::bigint, 'B can read B 
 
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000001', true);
 select is((select count(*) from public.expenses where source_expense_id = 'rls-b'), 0::bigint, 'A cannot read B expenses');
+select is((select count(*) from public.user_settings where user_id = '20000000-0000-4000-8000-000000000002'), 0::bigint, 'A cannot read B settings');
 select is((with changed as (
   update public.expenses set name = '改ざん'
   where user_id = '20000000-0000-4000-8000-000000000002'
   returning 1
 ) select count(*) from changed), 0::bigint, 'A cannot update B expenses');
+select throws_ok(
+  $$update public.expenses set user_id = '20000000-0000-4000-8000-000000000002'
+    where source_expense_id = 'rls-a'$$,
+  '42501', null, 'A cannot transfer an expense to B'
+);
 select is((with removed as (
   delete from public.expenses
   where user_id = '20000000-0000-4000-8000-000000000002'

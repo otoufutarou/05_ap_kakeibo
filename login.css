@@ -493,6 +493,27 @@
   text-underline-offset: 3px;
 }
 
+.policy-document {
+  padding: 48px 24px 24px;
+  color: var(--primary-dark);
+  line-height: 1.8;
+}
+
+.policy-document h1 {
+  font-size: 25px;
+  font-weight: 400;
+}
+
+.policy-document h2 {
+  margin: 24px 0 6px;
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.policy-document a {
+  color: var(--primary-dark);
+}
+
 @media (max-width: 350px) {
   .login-button {
     gap: 7px;

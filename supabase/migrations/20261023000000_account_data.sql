@@ -3,7 +3,7 @@ create table if not exists public.expenses (
   user_id uuid not null references auth.users (id) on delete cascade,
   source_expense_id text not null,
   name text not null check (char_length(name) between 1 and 100),
-  amount bigint not null check (amount > 0),
+  amount bigint not null check (amount > 0 and amount <= 9007199254740991),
   category text,
   expense_date date not null,
   created_at timestamptz not null default now(),
@@ -23,10 +23,33 @@ create table if not exists public.user_settings (
   updated_at timestamptz not null default now()
 );
 
+create or replace function public.set_updated_at()
+returns trigger
+language plpgsql
+set search_path = ''
+as $$
+begin
+  new.updated_at := now();
+  return new;
+end;
+$$;
+
+drop trigger if exists expenses_set_updated_at on public.expenses;
+create trigger expenses_set_updated_at
+  before update on public.expenses
+  for each row execute function public.set_updated_at();
+
+drop trigger if exists user_settings_set_updated_at on public.user_settings;
+create trigger user_settings_set_updated_at
+  before update on public.user_settings
+  for each row execute function public.set_updated_at();
+
+revoke all on function public.set_updated_at() from public, anon, authenticated;
+
 alter table public.expenses enable row level security;
 alter table public.user_settings enable row level security;
 
-revoke all on public.expenses, public.user_settings from anon;
+revoke all on public.expenses, public.user_settings from public, anon, authenticated;
 grant select, insert, update, delete on public.expenses to authenticated;
 grant select, insert, update, delete on public.user_settings to authenticated;
 
@@ -82,7 +105,6 @@ declare
   desired jsonb;
   expected jsonb;
   source_id text;
-  expected_updated_at timestamptz;
   desired_date date;
   desired_created_at timestamptz;
   desired_category text;
@@ -106,7 +128,7 @@ begin
   for expected in select value from jsonb_array_elements(p_expected)
   loop
     source_id := expected->>'source_expense_id';
-    if source_id is null or source_id = '' then
+    if source_id is null or source_id = '' or expected->>'updated_at' is null then
       raise exception 'invalid_expense_id' using errcode = '22023';
     end if;
     select * into current_row
@@ -171,6 +193,13 @@ begin
       ) then
         raise exception 'sync_conflict' using errcode = '40001';
       end if;
+      if current_row.name = desired->>'name'
+        and current_row.amount = (desired->>'amount')::bigint
+        and current_row.expense_date = desired_date
+        and current_row.category is not distinct from desired_category
+        and current_row.metadata = desired_metadata then
+        continue;
+      end if;
       update public.expenses
         set name = desired->>'name',
             amount = (desired->>'amount')::bigint,
@@ -209,5 +238,5 @@ begin
 end;
 $$;
 
-revoke all on function public.sync_expenses(jsonb, jsonb) from public, anon;
+revoke all on function public.sync_expenses(jsonb, jsonb) from public, anon, authenticated;
 grant execute on function public.sync_expenses(jsonb, jsonb) to authenticated;

@@ -31,14 +31,16 @@ Supabaseの外部プロジェクト作成や本番設定変更は、このリポ
 1. Supabase Dashboardでプロジェクトを作成し、Project URLと**Publishable key**（旧形式の場合は`anon`/`public` JWT）を取得します。
 2. `supabase-config.js` の `P_KAKEIBO_SUPABASE_URL` と `P_KAKEIBO_SUPABASE_PUBLISHABLE_KEY` に設定します。これらはブラウザーへ公開される値です。`service_role`、Secret key、DBパスワードを絶対に設定しないでください。クライアントは `sb_publishable_` またはJWTのroleが`anon`のキー以外を拒否します。
 3. Supabase CLIで既存テーブルや既存プロジェクトを確認してから、`supabase/migrations/20261023000000_account_data.sql` を開発プロジェクトへ適用します。既存テーブルが同名なら適用を止め、スキーマを先に照合してください。このmigrationは新規テーブルを前提とし、既存データを削除しません。
-4. SQL EditorまたはSupabase CLIで `supabase/tests/rls.test.sql` を実行し、pgTAP拡張の有効化後に8件すべて通ることを確認します。A/Bの分離に加え、未認証ユーザーの読み取り拒否を確認します。
+4. SQL EditorまたはSupabase CLIで `supabase/tests/rls.test.sql` を実行し、pgTAP拡張の有効化後に11件すべて通ることを確認します。A/Bの分離に加え、未認証ユーザーの読み取り拒否を確認します。
 5. Authenticationでメール認証を有効にし、メール確認を必須にします。開発時はSupabaseテストメール設定を使い、本番前に運営者が管理するSMTP、送信元、レート制限を設定してください。
-6. Authentication > URL ConfigurationのSite URLを実際のPages公開URL（例：`https://otoufutarou.github.io/05_ap_kakeibo/`）に設定し、Redirect URLsに少なくとも `https://otoufutarou.github.io/05_ap_kakeibo/login.html` と開発URL `http://localhost:8000/login.html` を追加します。`/05_ap_kakeibo/` のサブパスを省かないでください。OAuth・確認・再設定はいずれも既存の `login.html` に戻るため、GitHub Pagesで404になりません。
+6. Authentication > URL ConfigurationのSite URLを実際のPages公開URL（例：`https://otoufutarou.github.io/05_ap_kakeibo/`）に設定し、Redirect URLsに `https://otoufutarou.github.io/05_ap_kakeibo/login.html?callback=**` と開発URL `http://localhost:8000/login.html?callback=**` を追加します。`/05_ap_kakeibo/` のサブパスを省かないでください。OAuth・確認・再設定はいずれも既存の `login.html` に戻るため、GitHub Pagesで404になりません。
 7. Google Cloud ConsoleでOAuthクライアントを作成し、Supabase Dashboardに表示されるOAuth callback URLをGoogleの承認済みリダイレクトURIに登録します。Google providerを有効にし、SupabaseのRedirect URLsには上記Pages URLを設定します。
 8. アカウント削除を有効にする場合、Edge Function `delete-account` をデプロイし、サーバー側環境変数 `SUPABASE_URL`、`SUPABASE_ANON_KEY`、`SUPABASE_SERVICE_ROLE_KEY`、`ALLOWED_ORIGIN` を設定します。`SUPABASE_SERVICE_ROLE_KEY` はEdge Functionの秘密環境変数だけに置き、ブラウザー、Git、Pagesへ出さないでください。`ALLOWED_ORIGIN` は `https://otoufutarou.github.io` のようにOriginだけを指定します。
 9. 2つのテストアカウントでメール/Google認証、RLS、追加・編集・削除、競合時の拒否、削除後のCASCADEを実機確認してから本番プロジェクトに適用します。
 
 この静的Pages構成はビルド時環境変数を読み込まないため、ブラウザー設定を `supabase-config.js` に置きます。ここには公開してよいURLとPublishable keyだけを入れてください。管理用キーを追加するための設定場所ではありません。
+
+`P_KAKEIBO_ENABLE_SIGNUP` は規約・ポリシー草案が運営者に承認されるまで `false` のままにしてください。本番Supabase側でも新規サインアップを無効にし、Google OAuth経由の新規ユーザー作成も同様に止めてください。正式文書の確定と必要な法務確認後にのみ、メール登録フラグとSupabase側のサインアップ設定を有効化します。`supabase/config.toml` のローカル開発サインアップ設定はテスト用で、本番設定の根拠にはしないでください。
 
 ## 残作業・未検証
 

@@ -9,7 +9,7 @@ const loginActions = document.querySelector(".login-actions");
 const divider = document.querySelector(".login-divider");
 const signupButton = document.querySelector("#show-signup");
 const formTitle = document.querySelector("#form-title");
-const forms = ["email-form", "signup-form", "reset-form", "new-password-form", "email-confirmation"];
+const forms = ["email-form", "signup-form", "reset-form", "new-password-form", "email-confirmation", "password-complete"];
 
 function returnToUrl() {
   try {
@@ -30,6 +30,10 @@ function callbackUrl(kind = "auth") {
   return callback.href;
 }
 
+function cleanCallbackUrl() {
+  history.replaceState(null, "", location.pathname);
+}
+
 function showForm(id, title, message = "") {
   authForms.hidden = false;
   loginActions.hidden = true;
@@ -37,11 +41,15 @@ function showForm(id, title, message = "") {
   signupButton.hidden = true;
   formTitle.textContent = title;
   feedback.textContent = message;
+  feedback.dataset.error = "false";
   forms.forEach((formId) => {
     document.querySelector(`#${formId}`).hidden = formId !== id;
   });
   document.querySelector("#back-to-login").hidden = id === "new-password-form";
-  document.querySelector("#account-settings-link").hidden = id !== "email-confirmation";
+  const returnLink = document.querySelector("#account-settings-link");
+  returnLink.hidden = !["email-confirmation", "password-complete"].includes(id);
+  returnLink.href = returnToUrl();
+  returnLink.textContent = "家計簿へ戻る";
 }
 
 function showLogin() {
@@ -101,6 +109,7 @@ async function start() {
   const callback = params.get("callback");
   if (callback === "recovery") {
     const { data, error } = await client.auth.getSession();
+    cleanCallbackUrl();
     if (error || !data.session) {
       showForm("email-form", "パスワード再設定", "再設定リンクが無効または期限切れです。もう一度メールを送信してください。");
     } else {
@@ -110,8 +119,8 @@ async function start() {
   }
   if (callback === "auth" || callback === "verified") {
     const { data, error } = await client.auth.getSession();
+    cleanCallbackUrl();
     if (error) {
-      history.replaceState(null, "", location.pathname);
       setFormNotice("認証を完了できませんでした。リンクが期限切れの場合は再度お試しください。");
     } else if (data.session?.user) {
       location.replace(returnToUrl());
@@ -139,8 +148,12 @@ document.querySelector("#google-login").addEventListener("click", async (event) 
     setFormNotice("Googleログインは未設定です。SupabaseのProject URLとPublishable keyが必要です。");
     return;
   }
+  if (isInXBrowser()) {
+    setFeedback("Xアプリ内ブラウザではGoogle認証が制限される場合があります。Safariなど通常のブラウザでこのページを開いてください。", true);
+    return;
+  }
   setBusy(button, true);
-  setFeedback(isInXBrowser() ? "Xアプリ内ブラウザでは認証できない場合があります。Safariなど通常のブラウザで開いてください。" : "Googleへ接続しています…");
+  setFeedback("Googleへ接続しています…");
   try {
     const client = await getSupabaseClient();
     const { error } = await client.auth.signInWithOAuth({
@@ -238,10 +251,11 @@ document.querySelector("#reset-form").addEventListener("submit", async (event) =
   setBusy(button, true);
   try {
     const client = await getSupabaseClient();
-    await client.auth.resetPasswordForEmail(
+    const { error } = await client.auth.resetPasswordForEmail(
       document.querySelector("#reset-email").value.trim(),
       { redirectTo: callbackUrl("recovery") }
     );
+    if (error) throw error;
     setFeedback("該当するアカウントがある場合、再設定メールを送信しました。メールをご確認ください。");
   } catch {
     setFeedback("送信を確認できませんでした。しばらくしてから再試行してください。", true);
@@ -263,7 +277,7 @@ document.querySelector("#new-password-form").addEventListener("submit", async (e
     const client = await getSupabaseClient();
     const { error } = await client.auth.updateUser({ password });
     if (error) throw error;
-    location.replace(returnToUrl());
+    showForm("password-complete", "パスワードを更新しました");
   } catch {
     setFeedback("パスワードを更新できませんでした。再設定リンクが有効か確認してください。", true);
     setBusy(button, false);
@@ -277,7 +291,7 @@ try {
   document.body.dataset.theme = "purple";
 }
 if (params.has("error") || params.has("error_description")) {
-  history.replaceState(null, "", location.pathname + location.search.replace(/[?&](error|error_description)=[^&]*/g, "").replace(/^&/, "?"));
+  cleanCallbackUrl();
   setFormNotice("認証を完了できませんでした。キャンセルされた場合は、もう一度お試しください。");
 }
 start();

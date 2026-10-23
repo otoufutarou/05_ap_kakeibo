@@ -11,6 +11,7 @@ const signedInActions = document.querySelector("#signed-in-account-actions");
 const accountDescription = document.querySelector("#account-description");
 const accountIdentity = document.querySelector("#account-identity");
 const retryButton = document.querySelector("#retry-cloud-sync");
+const discardButton = document.querySelector("#discard-pending-changes");
 const importDialog = document.querySelector("#import-dialog");
 let client = null;
 let baseline = [];
@@ -37,6 +38,7 @@ function showGuest() {
   activeUser = null;
   pendingSave = null;
   pendingTheme = null;
+  discardButton.hidden = true;
   baseline = [];
   window.pKakeiboAuth = { status: "guest", user: null };
   guestActions.hidden = false;
@@ -92,6 +94,7 @@ async function flushPending(pending) {
     baseline = saved;
     if (pendingSave?.generation === pending.generation) {
       pendingSave = null;
+      window.pKakeiboApp.setExpenses(saved);
       try {
         localStorage.removeItem(pendingStorageKey(activeUser.id));
       } catch {
@@ -106,7 +109,9 @@ async function flushPending(pending) {
       pendingSave = pending;
       writePending(activeUser.id, pending);
     }
-    setStatus(error.code === "40001" || error.message?.includes("sync_conflict")
+    const conflict = error.code === "40001" || error.message?.includes("sync_conflict");
+    discardButton.hidden = !conflict;
+    setStatus(conflict
       ? "別の端末で記録が更新されています。新しい内容を確認してから同期してください。"
       : "クラウドへ保存できていません。入力内容はこの端末に保持されています。通信を確認して再試行してください。", true);
   }
@@ -114,7 +119,7 @@ async function flushPending(pending) {
 
 function queueSave(expenses) {
   if (!activeUser) return;
-  const item = { generation: ++generation, expenses: cloneExpenses(expenses), expected: [] };
+  const item = { generation: ++generation, expenses: cloneExpenses(expenses), expected: null };
   pendingSave = item;
   if (!writePending(activeUser.id, item)) {
     setStatus("未保存の変更を端末に退避できません。ログアウトせず通信を確認してください。", true);
@@ -202,8 +207,10 @@ async function activateUser(user) {
     baseline = account.expenses;
     const pending = readPending(user.id);
     pendingSave = pending;
+    discardButton.hidden = true;
     try {
-      pendingTheme = localStorage.getItem(pendingThemeKey(user.id));
+      const savedTheme = localStorage.getItem(pendingThemeKey(user.id));
+      pendingTheme = ["purple", "blue", "green", "yellow"].includes(savedTheme) ? savedTheme : null;
     } catch {
       pendingTheme = null;
     }
@@ -242,6 +249,27 @@ function activateGuest() {
 }
 
 document.querySelector("#retry-cloud-sync").addEventListener("click", retrySave);
+discardButton.addEventListener("click", async () => {
+  if (!activeUser || !client) return;
+  if (!confirm("この端末の未保存変更（支出・テーマ）を破棄し、クラウドの最新内容に切り替えます。よろしいですか？")) return;
+  try {
+    const account = await loadAccountData(client);
+    baseline = account.expenses;
+    pendingSave = null;
+    discardButton.hidden = true;
+    pendingTheme = null;
+    localStorage.removeItem(pendingStorageKey(activeUser.id));
+    localStorage.removeItem(pendingThemeKey(activeUser.id));
+    window.pKakeiboAuth.status = "restoring";
+    window.pKakeiboApp.setExpenses(account.expenses);
+    window.pKakeiboApp.applyTheme(account.settings.theme);
+    window.pKakeiboAuth.status = "signed-in";
+    discardButton.hidden = true;
+    setStatus("クラウドの最新記録に切り替えました。");
+  } catch {
+    setStatus("クラウドの最新記録を読み込めません。未保存の変更は保持されています。", true);
+  }
+});
 document.querySelector("#retry-app-load").addEventListener("click", () => {
   if (activeUser) activateUser(activeUser);
   else start();
