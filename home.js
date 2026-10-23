@@ -32,6 +32,7 @@ homeForm.onsubmit = event => {
   submitButton.disabled = true;
   try {
     originalSubmit.call(homeForm, event);
+    entryCategories.set(null);
     fitTotals();
   } catch (error) {
     expenses = previousExpenses;
