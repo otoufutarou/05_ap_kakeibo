@@ -1,0 +1,32 @@
+project_id = "p-kakeibo"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+major_version = 15
+
+[auth]
+enabled = true
+site_url = "http://localhost:8000"
+additional_redirect_urls = [
+  "http://localhost:8000/login.html",
+  "http://localhost:8000/login.html?callback=**",
+  "https://otoufutarou.github.io/05_ap_kakeibo/login.html",
+  "https://otoufutarou.github.io/05_ap_kakeibo/login.html?callback=**"
+]
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = true
+max_frequency = "60s"
+otp_expiry = 3600
+
+[functions.delete-account]
+verify_jwt = true

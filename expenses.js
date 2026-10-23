@@ -25,6 +25,11 @@ function openExpenseEditor(expense, opener) {
 }
 
 function persistExpenses(next) {
+  if (window.pKakeiboAuth?.user) {
+    expenses = next;
+    window.dispatchEvent(new CustomEvent('p-kakeibo-data-changed', { detail: { expenses } }));
+    return;
+  }
   localStorage.setItem(STORAGE, JSON.stringify(next));
   expenses = next;
 }
