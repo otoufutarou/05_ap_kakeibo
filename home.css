@@ -2,7 +2,8 @@
   --primary: #cdb9f2;
   --primary-dark: #7359a2;
   --primary-soft: #eee3fc;
-  --scene: #f8f3ff;
+  --scene: #f5effd;
+  --scene-bottom: #f5eefd;
   --scroll-top: #e0d1fc;
   --scroll-bottom: #e0cffc;
   --surface: rgba(255, 255, 255, .86);
@@ -18,7 +19,8 @@ body[data-theme="blue"] {
   --primary: #a9dbec;
   --primary-dark: #347fa4;
   --primary-soft: #dff5fc;
-  --scene: #f0fbff;
+  --scene: #ebfafe;
+  --scene-bottom: #e9f9fd;
   --scroll-top: #beebfc;
   --scroll-bottom: #b0e5fc;
   --button-start: #69bad4;
@@ -31,7 +33,8 @@ body[data-theme="green"] {
   --primary: #bce5c6;
   --primary-dark: #347f65;
   --primary-soft: #e1f7e9;
-  --scene: #f1fff7;
+  --scene: #ebfdf0;
+  --scene-bottom: #e9fbed;
   --scroll-top: #c7f4d8;
   --scroll-bottom: #bdf1d5;
   --button-start: #72bf99;
@@ -44,7 +47,8 @@ body[data-theme="yellow"] {
   --primary: #f5e3a7;
   --primary-dark: #95743f;
   --primary-soft: #fff2c8;
-  --scene: #fffbf0;
+  --scene: #fef9e5;
+  --scene-bottom: #fef9e2;
   --scroll-top: #feecab;
   --scroll-bottom: #fee99f;
   --button-start: #dcc16c;
@@ -62,10 +66,16 @@ body[data-theme="yellow"] {
 body {
   min-height: 100vh;
   min-height: 100dvh;
-  /* PNG上下端の平均色で、Safariのバウンス時に露出する背景を塗る。 */
+  /* PNGの切り出し境界と上下端の平均色を、画像の背後でつなぐ。 */
+  --page-background: linear-gradient(
+    var(--scroll-top),
+    var(--scene) calc(min(100vw, 430px) * var(--image-ratio) * .12),
+    var(--scene-bottom) calc(100% - min(100vw, 430px) * var(--image-ratio) * .3 - 84px - env(safe-area-inset-bottom)),
+    var(--scroll-bottom) calc(100% - 84px - env(safe-area-inset-bottom))
+  );
   background-color: var(--scroll-bottom);
-  background-image: linear-gradient(var(--scroll-top), var(--scroll-bottom));
-  background-attachment: fixed;
+  background-image: var(--page-background);
+  background-attachment: scroll;
   background-repeat: no-repeat;
 }
 
@@ -75,7 +85,7 @@ body {
 }
 
 .app[data-page="home"] {
-  background: var(--scene);
+  background: var(--scroll-bottom) var(--page-background) no-repeat;
   overflow: visible;
 }
 
@@ -289,6 +299,7 @@ body {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   min-height: calc(60px + env(safe-area-inset-bottom));
   height: auto;
+  background-color: #fff;
   backdrop-filter: none;
 }
 
