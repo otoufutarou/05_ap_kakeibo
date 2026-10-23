@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ログイン画面プレビュー | P型家計簿</title>
+  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./home.css">
+  <link rel="stylesheet" href="./login.css">
+  <script src="./login.js" defer></script>
+</head>
+<body class="login-preview">
+  <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs>
+      <symbol id="cloud" viewBox="0 0 48 40">
+        <path d="M13 34h23a10 10 0 0 0 1-20A14 14 0 0 0 10 13a11 11 0 0 0 3 21Z"/>
+      </symbol>
+      <symbol id="phone" viewBox="0 0 48 48">
+        <rect x="12" y="3" width="24" height="42" rx="4"/>
+        <path d="M15 35h18"/>
+        <circle cx="24" cy="40" r="1" fill="currentColor" stroke="none"/>
+      </symbol>
+      <symbol id="shield" viewBox="0 0 48 48">
+        <path d="M24 3c6 5 12 6 17 7v13c0 10-8 17-17 22C15 40 7 33 7 23V10c5-1 11-2 17-7Z"/>
+        <path d="m15 23 6 6 13-13"/>
+      </symbol>
+      <symbol id="mail" viewBox="0 0 48 40">
+        <rect x="3" y="5" width="42" height="30" rx="4"/>
+        <path d="m5 8 19 14L43 8"/>
+      </symbol>
+      <symbol id="arrow" viewBox="0 0 16 24">
+        <path d="m4 3 9 9-9 9"/>
+      </symbol>
+    </defs>
+  </svg>
+  <main class="login-shell" aria-labelledby="login-title">
+    <div class="login-top-clouds" aria-hidden="true"></div>
+    <p class="preview-badge">デザイン確認用・認証未接続</p>
+    <header class="login-heading">
+      <h1 id="login-title">P型家計簿</h1>
+      <h2>おかえりなさい</h2>
+      <p>きろくを、あなたのペースで。</p>
+    </header>
+    <div class="welcome-scene">
+      <div class="welcome-art" aria-hidden="true"></div>
+      <p class="welcome-bubble">ログインして<br>きろくを大切に<br>守るよ！</p>
+    </div>
+    <section class="login-card" aria-labelledby="benefits-title">
+      <h2 id="benefits-title">
+        <svg class="outline-icon heading-cloud" aria-hidden="true"><use href="#cloud"/></svg>
+        ログインしてつづけると
+      </h2>
+      <ul class="login-benefits">
+        <li>
+          <span class="benefit-icon"><svg class="outline-icon" aria-hidden="true"><use href="#phone"/></svg></span>
+          <span>ほかの端末でも<br>つかえる</span>
+        </li>
+        <li>
+          <span class="benefit-icon"><svg class="outline-icon" aria-hidden="true"><use href="#cloud"/></svg></span>
+          <span>きろくを<br>安全に保存</span>
+        </li>
+        <li>
+          <span class="benefit-icon"><svg class="outline-icon" aria-hidden="true"><use href="#shield"/></svg></span>
+          <span>データは<br>あなただけのもの</span>
+        </li>
+      </ul>
+      <div class="login-actions">
+        <button class="login-button google-button" type="button" data-preview="google">
+          <span class="google-logo" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path fill="#4285f4" d="M43.61 24.46c0-1.36-.12-2.66-.35-3.92H24v7.42h11a9.4 9.4 0 0 1-4.08 6.17v5h6.6c3.86-3.56 6.09-8.8 6.09-14.67Z"/>
+              <path fill="#34a853" d="M24 44c5.51 0 10.13-1.83 13.51-4.87l-6.6-5C29.08 35.37 26.72 36.1 24 36.1c-5.32 0-9.83-3.59-11.44-8.42H5.74v5.16A20.4 20.4 0 0 0 24 44Z"/>
+              <path fill="#fbbc05" d="M12.56 27.68a12.25 12.25 0 0 1 0-7.36v-5.16H5.74a20.4 20.4 0 0 0 0 17.68Z"/>
+              <path fill="#ea4335" d="M24 11.9c3 0 5.68 1.03 7.8 3.05l5.85-5.85C34.12 5.8 29.51 4 24 4A20.4 20.4 0 0 0 5.74 15.16l6.82 5.16C14.17 15.49 18.68 11.9 24 11.9Z"/>
+            </svg>
+          </span>
+          <span>Googleでつづける</span>
+          <svg class="outline-icon button-arrow" aria-hidden="true"><use href="#arrow"/></svg>
+        </button>
+        <button class="login-button email-button" type="button" data-preview="email">
+          <svg class="outline-icon mail-icon" aria-hidden="true"><use href="#mail"/></svg>
+          <span>メールアドレスでつづける</span>
+          <svg class="outline-icon button-arrow" aria-hidden="true"><use href="#arrow"/></svg>
+        </button>
+      </div>
+      <div class="login-divider"><span>または</span></div>
+      <button class="text-button signup-button" type="button" data-preview="signup">アカウントを作成する</button>
+    </section>
+    <footer class="login-legal">
+      <p>ログインすることで、<button class="text-button" type="button" data-preview="terms">利用規約</button>・<button class="text-button" type="button" data-preview="privacy">プライバシーポリシー</button><br>に同意したものとみなされます</p>
+    </footer>
+    <aside class="preview-panel" aria-labelledby="preview-title">
+      <h2 id="preview-title">デザイン確認用プレビュー</h2>
+      <p>認証・クラウド保存は未接続です。<br>同意・登録・ログインは行われません。</p>
+      <label for="preview-theme">テーマカラー</label>
+      <select id="preview-theme">
+        <option value="purple">むらさき</option>
+        <option value="blue">あお</option>
+        <option value="green">みどり</option>
+        <option value="yellow">きいろ</option>
+      </select>
+      <p>この画面での色変更は保存されません。</p>
+      <a href="./index.html">今までの家計簿を開く</a>
+    </aside>
+  </main>
+  <dialog class="preview-dialog" aria-labelledby="preview-dialog-title">
+    <h2 id="preview-dialog-title">デザイン確認用プレビュー</h2>
+    <p id="preview-feedback"></p>
+    <form method="dialog"><button class="secondary" autofocus>閉じる</button></form>
+  </dialog>
+</body>
+</html>
