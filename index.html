@@ -6,7 +6,7 @@
   <title>P型家計簿</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="home.css">
-  <link rel="stylesheet" href="categories.css">
+  <link rel="stylesheet" href="expenses.css">
 </head>
 <body>
 <div class="app" id="app" data-page="home">
@@ -16,13 +16,9 @@
       <header class="hero"><h1>P型家計簿</h1><p>今日つかった分を登録してね<br>だいたいでいいよ</p></header>
       <form id="expense-form" class="entry">
         <div class="entry-grid">
-          <label>なにに<input id="expense-name" maxlength="100" placeholder="たとえば カフェ" required></label>
+          <label>なにに<input id="expense-name" maxlength="100" placeholder="たとえば カフェ"></label>
           <label>いくら<input id="expense-amount" type="text" inputmode="numeric" pattern="[0-9]{1,8}" maxlength="8" placeholder="¥ 0" required></label>
         </div>
-        <fieldset class="category-picker" id="entry-categories">
-          <legend>カテゴリー（任意）</legend>
-          <div class="category-options"></div>
-        </fieldset>
         <button class="primary" type="submit" disabled>登録する</button>
       </form>
       <section class="dashboard" aria-label="集計と直近のログ">
@@ -76,12 +72,8 @@
   <form id="edit-expense-form">
     <h2 id="editor-title">記録を編集</h2>
     <p class="edit-date" id="edit-date"></p>
-    <label>なにに<input id="edit-name" required></label>
-    <label>いくら<input id="edit-amount" type="text" inputmode="decimal" required></label>
-    <fieldset class="category-picker" id="edit-categories">
-      <legend>カテゴリー（任意）</legend>
-      <div class="category-options"></div>
-    </fieldset>
+    <label>なにに<input id="edit-name" placeholder="たとえば カフェ"></label>
+    <label>いくら<input id="edit-amount" type="text" inputmode="numeric" pattern="[0-9]+" required></label>
     <p id="edit-feedback" class="edit-feedback" role="alert"></p>
     <div class="edit-actions">
       <button type="button" class="secondary" id="edit-cancel">キャンセル</button>
@@ -90,7 +82,7 @@
     <button type="button" class="edit-delete" id="edit-delete">この記録を削除</button>
   </form>
 </dialog>
-<script src="categories.js"></script>
+<script src="expenses.js"></script>
 <script src="app.js"></script>
 <script src="home.js"></script>
 </body>

@@ -2,7 +2,6 @@ const appShell = document.querySelector('#app');
 appShell.dataset.page = 'home';
 
 const homeForm = document.querySelector('#expense-form');
-const nameInput = document.querySelector('#expense-name');
 const amountInput = document.querySelector('#expense-amount');
 const submitButton = homeForm.querySelector('[type="submit"]');
 const feedback = document.createElement('p');
@@ -13,9 +12,7 @@ homeForm.append(feedback);
 homeForm.setAttribute('aria-describedby', feedback.id);
 
 function updateSubmitState() {
-  submitButton.disabled = !nameInput.value.trim()
-    || !/^[0-9]{1,8}$/.test(amountInput.value)
-    || Number(amountInput.value) < 1;
+  submitButton.disabled = !amountInput.validity.valid || !validExpenseAmount(amountInput.value);
 }
 
 homeForm.addEventListener('input', () => {
@@ -32,7 +29,6 @@ homeForm.onsubmit = event => {
   submitButton.disabled = true;
   try {
     originalSubmit.call(homeForm, event);
-    entryCategories.set(null);
     fitTotals();
   } catch (error) {
     expenses = previousExpenses;
