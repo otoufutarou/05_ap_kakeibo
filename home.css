@@ -311,6 +311,10 @@ body {
   box-shadow: var(--shadow);
 }
 
+body[data-theme="purple"] #home .speech {
+  transform: translateY(calc(min(100vw, 430px) * .135));
+}
+
 .bottom-nav {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   min-height: calc(60px + env(safe-area-inset-bottom));
