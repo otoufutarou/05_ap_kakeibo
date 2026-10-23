@@ -3,6 +3,8 @@
   --primary-dark: #7359a2;
   --primary-soft: #eee3fc;
   --scene: #f8f3ff;
+  --scroll-top: #e0d1fc;
+  --scroll-bottom: #e0cffc;
   --surface: rgba(255, 255, 255, .86);
   --text-secondary: #625c6b;
   --shadow: 0 4px 18px rgba(80, 70, 110, .08);
@@ -12,37 +14,60 @@
   --image-ratio: calc(1672 / 941);
 }
 
+:root:has(body[data-theme="blue"]),
 body[data-theme="blue"] {
   --primary: #a9dbec;
   --primary-dark: #347fa4;
   --primary-soft: #dff5fc;
   --scene: #f0fbff;
+  --scroll-top: #beebfc;
+  --scroll-bottom: #b0e5fc;
   --button-start: #69bad4;
   --button-end: #347fa4;
   --image: url('./public/assets/blue_20261022224637.png');
   --image-ratio: calc(941 / 545);
 }
 
+:root:has(body[data-theme="green"]),
 body[data-theme="green"] {
   --primary: #bce5c6;
   --primary-dark: #347f65;
   --primary-soft: #e1f7e9;
   --scene: #f1fff7;
+  --scroll-top: #c7f4d8;
+  --scroll-bottom: #bdf1d5;
   --button-start: #72bf99;
   --button-end: #347f65;
   --image: url('./public/assets/green_20261022224836.png');
   --image-ratio: calc(938 / 545);
 }
 
+:root:has(body[data-theme="yellow"]),
 body[data-theme="yellow"] {
   --primary: #f5e3a7;
   --primary-dark: #95743f;
   --primary-soft: #fff2c8;
   --scene: #fffbf0;
+  --scroll-top: #feecab;
+  --scroll-bottom: #fee99f;
   --button-start: #dcc16c;
   --button-end: #a38038;
   --image: url('./public/assets/yellow_20261022224915.png');
   --image-ratio: calc(938 / 545);
+}
+
+/* PNG上下端の平均色で、Safariのバウンス時に露出するキャンバスを塗る。 */
+:root {
+  min-height: 100%;
+  background-color: var(--scroll-bottom);
+  background-image: linear-gradient(var(--scroll-top), var(--scroll-bottom));
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .background {
