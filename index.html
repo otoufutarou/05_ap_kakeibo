@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>P型家計簿</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="home.css">
+</head>
+<body>
+<div class="app" id="app" data-page="home">
+  <div class="background" aria-hidden="true"></div>
+  <main class="content">
+    <section class="page active" id="home">
+      <header class="hero"><h1>P型家計簿</h1><p>今日つかった分を登録してね<br>だいたいでいいよ</p></header>
+      <form id="expense-form" class="entry">
+        <div class="entry-grid">
+          <label>なにに<input id="expense-name" maxlength="100" placeholder="たとえば カフェ" required></label>
+          <label>いくら<input id="expense-amount" type="text" inputmode="numeric" pattern="[0-9]{1,8}" maxlength="8" placeholder="¥ 0" required></label>
+        </div>
+        <button class="primary" type="submit" disabled>登録する</button>
+      </form>
+      <section class="dashboard" aria-label="集計と直近のログ">
+        <div class="totals">
+          <article class="card total"><h2>今月使った金額</h2><strong id="month-total">¥ 0</strong></article>
+          <article class="card total"><h2>今週使った金額</h2><strong id="week-total">¥ 0</strong></article>
+        </div>
+        <article class="card recent">
+          <div class="card-title"><h2>ログ</h2><button class="dots" data-go="logs" aria-label="ログをすべて見る">もっと見る</button></div>
+          <div id="recent-list" class="log-items"></div>
+        </article>
+      </section>
+      <div class="speech" id="speech">わすれちゃっても<br>あとで思い出せば大丈夫</div>
+    </section>
+    <section class="page" id="logs">
+      <div class="page-heading"><h1>ログ</h1></div>
+      <div class="filters"><button class="chip active" data-filter="all">すべて</button><button class="chip" data-filter="week">今週</button><button class="chip" data-filter="month">今月</button></div>
+      <div class="card long-list" id="full-list"></div>
+    </section>
+    <section class="page" id="calendar">
+      <div class="page-heading"><h1>カレンダー</h1></div>
+      <article class="card calendar-card">
+        <div class="calendar-heading"><button id="prev-month" aria-label="前月">‹</button><h2 id="calendar-title"></h2><button id="next-month" aria-label="翌月">›</button></div>
+        <div class="calendar-grid" id="calendar-grid"></div>
+      </article>
+      <article class="card calendar-detail"><h2 id="selected-date-title"></h2><div id="selected-date-list"></div></article>
+    </section>
+    <section class="page" id="charts">
+      <div class="page-heading"><h1>支出の変遷</h1></div>
+      <div class="filters"><button class="chip active" data-chart="week">週ごと</button><button class="chip" data-chart="month">月ごと</button></div>
+      <article class="card chart-card"><div id="chart-label" class="chart-label"></div><svg id="line-chart" viewBox="0 0 330 210" role="img" aria-label="支出の折れ線グラフ"></svg><div id="chart-summary" class="chart-summary"></div></article>
+    </section>
+    <section class="page" id="settings">
+      <div class="page-heading"><h1>設定</h1></div>
+      <article class="card settings-card">
+        <h2>テーマカラー</h2>
+        <div class="theme-options"><button class="theme-choice" data-theme="purple"><i></i>むらさき</button><button class="theme-choice" data-theme="blue"><i></i>あお</button><button class="theme-choice" data-theme="green"><i></i>みどり</button><button class="theme-choice" data-theme="yellow"><i></i>きいろ</button></div>
+      </article>
+      <article class="card settings-card"><h2>データ</h2><button class="secondary" id="export-csv">CSVで書き出す</button></article>
+      <div class="speech settings-speech">自分のペースで<br>つかってね</div>
+    </section>
+  </main>
+  <nav class="bottom-nav" aria-label="画面切り替え">
+    <button class="nav-item active" data-go="home"><span>⌂</span>ホーム</button>
+    <button class="nav-item" data-go="calendar"><span>▦</span>カレンダー</button>
+    <button class="nav-item" data-go="charts"><span>⌁</span>グラフ</button>
+    <button class="nav-item" data-go="settings"><span>⚙</span>設定</button>
+  </nav>
+</div>
+<script src="app.js"></script>
+<script src="home.js"></script>
+</body>
+</html>
