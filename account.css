@@ -1,0 +1,79 @@
+*[hidden] {
+  display: none !important;
+}
+
+.account-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--primary-dark);
+  text-decoration: none;
+}
+
+#account-card p {
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+#account-card #cloud-status {
+  overflow-wrap: anywhere;
+}
+
+#signed-in-account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.account-legal {
+  margin-bottom: 0;
+}
+
+.account-legal a,
+.app-load-error a {
+  color: var(--primary-dark);
+}
+
+.account-dialog {
+  width: min(430px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px 16px;
+  overflow-y: auto;
+  border: 1px solid var(--primary);
+  border-radius: 22px;
+  background: var(--scene);
+  color: var(--primary-dark);
+  box-shadow: var(--shadow);
+  line-height: 1.7;
+}
+
+.account-dialog::backdrop {
+  background: #30243e66;
+}
+
+.account-dialog h2 {
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.app-load-error {
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  max-width: 430px;
+  min-height: 100dvh;
+  margin: auto;
+  padding: 24px;
+  align-content: center;
+  color: var(--primary-dark);
+  text-align: center;
+}
+
+.app-load-error h1 {
+  font-weight: 400;
+}
+
+.app-load-error p {
+  line-height: 1.7;
+}

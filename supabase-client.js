@@ -17,7 +17,10 @@ function isPublishableKey(key) {
 export function isSupabaseConfigured() {
   try {
     const url = new URL(supabaseConfig.url);
-    return url.protocol === "https:" && isPublishableKey(supabaseConfig.publishableKey);
+    const secure = url.protocol === "https:";
+    const localDevelopment = url.protocol === "http:"
+      && ["localhost", "127.0.0.1"].includes(url.hostname);
+    return (secure || localDevelopment) && isPublishableKey(supabaseConfig.publishableKey);
   } catch {
     return false;
   }

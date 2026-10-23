@@ -71,3 +71,143 @@ drop policy if exists "Users can delete own settings" on public.user_settings;
 create policy "Users can delete own settings"
   on public.user_settings for delete to authenticated
   using ((select auth.uid()) = user_id);
+
+create or replace function public.sync_expenses(p_expenses jsonb, p_expected jsonb)
+returns setof public.expenses
+language plpgsql
+set search_path = ''
+as $$
+declare
+  current_row public.expenses%rowtype;
+  desired jsonb;
+  expected jsonb;
+  source_id text;
+  expected_updated_at timestamptz;
+  desired_date date;
+  desired_created_at timestamptz;
+  desired_category text;
+  desired_metadata jsonb;
+begin
+  if auth.uid() is null
+    or jsonb_typeof(p_expenses) <> 'array'
+    or jsonb_typeof(p_expected) <> 'array'
+    or jsonb_array_length(p_expenses) > 10000
+    or jsonb_array_length(p_expected) > 10000 then
+    raise exception 'invalid_sync_request' using errcode = '22023';
+  end if;
+
+  if (select count(*) from jsonb_array_elements(p_expenses)) <>
+     (select count(distinct item->>'source_expense_id') from jsonb_array_elements(p_expenses) item)
+     or (select count(*) from jsonb_array_elements(p_expected)) <>
+     (select count(distinct item->>'source_expense_id') from jsonb_array_elements(p_expected) item) then
+    raise exception 'duplicate_expense_id' using errcode = '22023';
+  end if;
+
+  for expected in select value from jsonb_array_elements(p_expected)
+  loop
+    source_id := expected->>'source_expense_id';
+    if source_id is null or source_id = '' then
+      raise exception 'invalid_expense_id' using errcode = '22023';
+    end if;
+    select * into current_row
+      from public.expenses
+      where user_id = auth.uid() and source_expense_id = source_id
+      for update;
+    if found and current_row.updated_at <> (expected->>'updated_at')::timestamptz then
+      if exists (
+        select 1 from jsonb_array_elements(p_expenses) item
+        where item->>'source_expense_id' = source_id
+          and item->>'name' = current_row.name
+          and (item->>'amount')::bigint = current_row.amount
+          and (item->>'expense_date')::date = current_row.expense_date
+          and nullif(item->>'category', '') is not distinct from current_row.category
+          and coalesce(item->'metadata', '{}'::jsonb) = current_row.metadata
+      ) then
+        continue;
+      end if;
+      raise exception 'sync_conflict' using errcode = '40001';
+    end if;
+    if not found and exists (
+      select 1 from jsonb_array_elements(p_expenses) item
+      where item->>'source_expense_id' = source_id
+    ) then
+      raise exception 'sync_conflict' using errcode = '40001';
+    end if;
+  end loop;
+
+  for desired in select value from jsonb_array_elements(p_expenses)
+  loop
+    source_id := desired->>'source_expense_id';
+    if source_id is null or source_id = ''
+      or coalesce(desired->>'name', '') = ''
+      or char_length(desired->>'name') > 100
+      or (desired->>'amount') !~ '^[1-9][0-9]*$'
+      or (desired->>'amount')::numeric > 9007199254740991
+      or (desired->>'expense_date') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
+      raise exception 'invalid_expense' using errcode = '22023';
+    end if;
+    desired_date := (desired->>'expense_date')::date;
+    desired_created_at := coalesce(nullif(desired->>'created_at', '')::timestamptz, now());
+    desired_category := nullif(desired->>'category', '');
+    desired_metadata := coalesce(desired->'metadata', '{}'::jsonb);
+    if jsonb_typeof(desired_metadata) <> 'object' then
+      raise exception 'invalid_expense_metadata' using errcode = '22023';
+    end if;
+
+    select * into current_row
+      from public.expenses
+      where user_id = auth.uid() and source_expense_id = source_id
+      for update;
+    if found then
+      if not exists (
+        select 1 from jsonb_array_elements(p_expected) item
+        where item->>'source_expense_id' = source_id
+      ) and (
+        current_row.name <> desired->>'name'
+        or current_row.amount <> (desired->>'amount')::bigint
+        or current_row.expense_date <> desired_date
+        or current_row.category is distinct from desired_category
+        or current_row.metadata <> desired_metadata
+      ) then
+        raise exception 'sync_conflict' using errcode = '40001';
+      end if;
+      update public.expenses
+        set name = desired->>'name',
+            amount = (desired->>'amount')::bigint,
+            category = desired_category,
+            expense_date = desired_date,
+            updated_at = now(),
+            metadata = desired_metadata
+        where id = current_row.id;
+    else
+      insert into public.expenses
+        (user_id, source_expense_id, name, amount, category, expense_date, created_at, metadata)
+      values
+        (auth.uid(), source_id, desired->>'name', (desired->>'amount')::bigint,
+         desired_category, desired_date, desired_created_at, desired_metadata);
+    end if;
+  end loop;
+
+  for expected in select value from jsonb_array_elements(p_expected)
+  loop
+    source_id := expected->>'source_expense_id';
+    if not exists (
+      select 1 from jsonb_array_elements(p_expenses) item
+      where item->>'source_expense_id' = source_id
+    ) then
+      delete from public.expenses
+        where user_id = auth.uid()
+          and source_expense_id = source_id
+          and updated_at = (expected->>'updated_at')::timestamptz;
+    end if;
+  end loop;
+
+  return query
+    select * from public.expenses
+    where user_id = auth.uid()
+    order by expense_date desc, created_at desc;
+end;
+$$;
+
+revoke all on function public.sync_expenses(jsonb, jsonb) from public, anon;
+grant execute on function public.sync_expenses(jsonb, jsonb) to authenticated;

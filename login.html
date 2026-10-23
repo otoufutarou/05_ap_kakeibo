@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>ログイン画面プレビュー | P型家計簿</title>
+  <title>ログイン | P型家計簿</title>
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./home.css">
   <link rel="stylesheet" href="./login.css">
-  <script src="./login.js" defer></script>
+  <script type="module" src="./login.js"></script>
 </head>
 <body class="login-preview">
   <svg class="icon-definitions" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -35,7 +35,6 @@
   </svg>
   <main class="login-shell" aria-labelledby="login-title">
     <div class="login-top-clouds" aria-hidden="true"></div>
-    <p class="preview-badge">デザイン確認用・認証未接続</p>
     <header class="login-heading">
       <h1 id="login-title">P型家計簿</h1>
       <h2>おかえりなさい</h2>
@@ -65,7 +64,7 @@
         </li>
       </ul>
       <div class="login-actions">
-        <button class="login-button google-button" type="button" data-preview="google">
+        <button class="login-button google-button" type="button" id="google-login">
           <span class="google-logo" aria-hidden="true">
             <svg viewBox="0 0 48 48">
               <path fill="#4285f4" d="M43.61 24.46c0-1.36-.12-2.66-.35-3.92H24v7.42h11a9.4 9.4 0 0 1-4.08 6.17v5h6.6c3.86-3.56 6.09-8.8 6.09-14.67Z"/>
@@ -77,36 +76,58 @@
           <span>Googleでつづける</span>
           <svg class="outline-icon button-arrow" aria-hidden="true"><use href="#arrow"/></svg>
         </button>
-        <button class="login-button email-button" type="button" data-preview="email">
+        <button class="login-button email-button" type="button" id="show-email-login">
           <svg class="outline-icon mail-icon" aria-hidden="true"><use href="#mail"/></svg>
           <span>メールアドレスでつづける</span>
           <svg class="outline-icon button-arrow" aria-hidden="true"><use href="#arrow"/></svg>
         </button>
       </div>
       <div class="login-divider"><span>または</span></div>
-      <button class="text-button signup-button" type="button" data-preview="signup">アカウントを作成する</button>
+      <button class="text-button signup-button" type="button" id="show-signup">アカウントを作成する</button>
+      <div id="auth-forms" hidden>
+        <button class="text-button form-back" id="back-to-login" type="button">ログイン画面へ戻る</button>
+        <h2 id="form-title"></h2>
+        <p id="auth-feedback" role="status" aria-live="polite"></p>
+        <form id="email-form" hidden>
+          <label for="email">メールアドレス</label>
+          <input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <label for="password">パスワード</label>
+          <div class="password-field"><input id="password" name="password" type="password" autocomplete="current-password" minlength="8" required><button type="button" data-toggle-password aria-label="パスワードを表示">表示</button></div>
+          <button class="login-button google-button form-submit" type="submit">ログイン</button>
+          <button class="text-button" id="show-reset" type="button">パスワードを忘れた場合</button>
+        </form>
+        <form id="signup-form" hidden>
+          <label for="signup-email">メールアドレス</label>
+          <input id="signup-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <label for="signup-password">パスワード（8文字以上）</label>
+          <div class="password-field"><input id="signup-password" name="password" type="password" autocomplete="new-password" minlength="8" required><button type="button" data-toggle-password aria-label="パスワードを表示">表示</button></div>
+          <label for="signup-confirm">パスワード（確認）</label>
+          <input id="signup-confirm" name="password-confirm" type="password" autocomplete="new-password" minlength="8" required>
+          <label class="consent"><input id="policy-consent" type="checkbox" required> <span><a href="./terms-draft.html">利用規約（草案）</a>と<a href="./privacy-draft.html">プライバシーポリシー（草案）</a>を読み、同意します</span></label>
+          <button class="login-button google-button form-submit" type="submit">アカウントを作成する</button>
+        </form>
+        <form id="reset-form" hidden>
+          <label for="reset-email">メールアドレス</label>
+          <input id="reset-email" name="email" type="email" autocomplete="email" maxlength="254" required>
+          <button class="login-button google-button form-submit" type="submit">再設定メールを送る</button>
+        </form>
+        <form id="new-password-form" hidden>
+          <label for="new-password">新しいパスワード</label>
+          <div class="password-field"><input id="new-password" name="password" type="password" autocomplete="new-password" minlength="8" required><button type="button" data-toggle-password aria-label="パスワードを表示">表示</button></div>
+          <label for="new-password-confirm">新しいパスワード（確認）</label>
+          <input id="new-password-confirm" name="password-confirm" type="password" autocomplete="new-password" minlength="8" required>
+          <button class="login-button google-button form-submit" type="submit">パスワードを更新</button>
+        </form>
+        <div id="email-confirmation" hidden>
+          <p>確認メールを送信しました。メール内のリンクを開いてください。</p>
+          <button class="text-button" id="resend-confirmation" type="button">確認メールを再送する</button>
+        </div>
+        <a class="text-button" id="account-settings-link" href="./index.html">家計簿へ戻る</a>
+      </div>
     </section>
     <footer class="login-legal">
-      <p>ログインすることで、<button class="text-button" type="button" data-preview="terms">利用規約</button>・<button class="text-button" type="button" data-preview="privacy">プライバシーポリシー</button><br>に同意したものとみなされます</p>
+      <p><a href="./terms-draft.html">利用規約（草案）</a> ・ <a href="./privacy-draft.html">プライバシーポリシー（草案）</a></p>
     </footer>
-    <aside class="preview-panel" aria-labelledby="preview-title">
-      <h2 id="preview-title">デザイン確認用プレビュー</h2>
-      <p>認証・クラウド保存は未接続です。<br>同意・登録・ログインは行われません。</p>
-      <label for="preview-theme">テーマカラー</label>
-      <select id="preview-theme">
-        <option value="purple">むらさき</option>
-        <option value="blue">あお</option>
-        <option value="green">みどり</option>
-        <option value="yellow">きいろ</option>
-      </select>
-      <p>この画面での色変更は保存されません。</p>
-      <a href="./index.html">今までの家計簿を開く</a>
-    </aside>
   </main>
-  <dialog class="preview-dialog" aria-labelledby="preview-dialog-title">
-    <h2 id="preview-dialog-title">デザイン確認用プレビュー</h2>
-    <p id="preview-feedback"></p>
-    <form method="dialog"><button class="secondary" autofocus>閉じる</button></form>
-  </dialog>
 </body>
 </html>
