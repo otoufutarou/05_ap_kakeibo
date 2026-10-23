@@ -14,7 +14,6 @@
   --image-ratio: calc(1672 / 941);
 }
 
-:root:has(body[data-theme="blue"]),
 body[data-theme="blue"] {
   --primary: #a9dbec;
   --primary-dark: #347fa4;
@@ -28,7 +27,6 @@ body[data-theme="blue"] {
   --image-ratio: calc(941 / 545);
 }
 
-:root:has(body[data-theme="green"]),
 body[data-theme="green"] {
   --primary: #bce5c6;
   --primary-dark: #347f65;
@@ -42,7 +40,6 @@ body[data-theme="green"] {
   --image-ratio: calc(938 / 545);
 }
 
-:root:has(body[data-theme="yellow"]),
 body[data-theme="yellow"] {
   --primary: #f5e3a7;
   --primary-dark: #95743f;
@@ -56,18 +53,20 @@ body[data-theme="yellow"] {
   --image-ratio: calc(938 / 545);
 }
 
-/* PNG上下端の平均色で、Safariのバウンス時に露出するキャンバスを塗る。 */
+/* htmlを透明にして、テーマ別のbody背景をページのキャンバスにも描画する。 */
 :root {
   min-height: 100%;
-  background-color: var(--scroll-bottom);
-  background-image: linear-gradient(var(--scroll-top), var(--scroll-bottom));
-  background-attachment: fixed;
-  background-repeat: no-repeat;
+  background: transparent;
 }
 
 body {
   min-height: 100vh;
   min-height: 100dvh;
+  /* PNG上下端の平均色で、Safariのバウンス時に露出する背景を塗る。 */
+  background-color: var(--scroll-bottom);
+  background-image: linear-gradient(var(--scroll-top), var(--scroll-bottom));
+  background-attachment: fixed;
+  background-repeat: no-repeat;
 }
 
 .background {
