@@ -1,0 +1,44 @@
+.log-row button.name {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.log-row .amount { flex-shrink: 0; }
+
+.expense-editor {
+  width: min(430px, calc(100% - 24px));
+  max-height: calc(100dvh - 32px);
+  padding: 20px 16px;
+  overflow-y: auto;
+  border: 1px solid var(--primary);
+  border-radius: 22px;
+  background: var(--scene);
+  color: var(--primary-dark);
+  box-shadow: var(--shadow);
+}
+
+.expense-editor::backdrop { background: #30243e66; }
+.expense-editor h2 { margin: 0; font-size: 20px; font-weight: 400; }
+.edit-date { font-size: 12px; }
+.expense-editor label { display: grid; gap: 6px; margin-top: 12px; font-size: 13px; }
+.expense-editor input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid var(--primary);
+  border-radius: 11px;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 16px;
+  color: var(--text-secondary);
+  background: #fff;
+}
+.edit-feedback { font-size: 12px; color: #8a2539; }
+.edit-feedback:empty { display: none; }
+.edit-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.edit-actions button, .edit-delete { min-height: 44px; }
+.edit-delete { margin-top: 12px; padding: 0; border: 0; background: transparent; color: #8a2539; font-size: 12px; }
