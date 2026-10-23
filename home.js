@@ -32,6 +32,7 @@ homeForm.onsubmit = event => {
   submitButton.disabled = true;
   try {
     originalSubmit.call(homeForm, event);
+    entryCategories.set(null);
     fitTotals();
   } catch (error) {
     expenses = previousExpenses;
@@ -72,6 +73,7 @@ function fitTotals() {
 }
 
 new ResizeObserver(fitTotals).observe(document.querySelector('#home .dashboard'));
+document.fonts.ready.then(fitTotals);
 updateSubmitState();
 updateCurrentTab();
 fitTotals();
