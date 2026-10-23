@@ -215,10 +215,12 @@ body {
 }
 
 #home .totals {
+  min-width: 0;
   grid-template-rows: 1.15fr 1fr;
 }
 
 #home .total {
+  min-width: 0;
   min-height: 105px;
   padding: 14px 12px;
 }
@@ -234,12 +236,26 @@ body {
   letter-spacing: 0;
 }
 
+#home .total .approx-tag {
+  display: table;
+  margin-top: 4px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
 #home .total strong {
   color: var(--primary-dark);
-  font-size: clamp(18px, 5vw, 24px);
+  font-size: clamp(20.16px, 5.6vw, 26.88px);
   font-variant-numeric: tabular-nums;
   font-weight: 400;
   letter-spacing: -.025em;
+  line-height: 1.1;
+  margin-top: 4px;
+  text-align: left;
 }
 
 #home .mini-seal {

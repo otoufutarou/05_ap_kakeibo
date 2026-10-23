@@ -72,6 +72,7 @@ function fitTotals() {
 }
 
 new ResizeObserver(fitTotals).observe(document.querySelector('#home .dashboard'));
+document.fonts.ready.then(fitTotals);
 updateSubmitState();
 updateCurrentTab();
 fitTotals();
