@@ -7,9 +7,16 @@
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="home.css">
   <link rel="stylesheet" href="expenses.css">
+  <link rel="stylesheet" href="account.css">
 </head>
 <body>
-<div class="app" id="app" data-page="home">
+<section id="app-load-error" class="app-load-error" hidden>
+  <h1>P型家計簿</h1>
+  <p id="app-load-error-message" role="alert"></p>
+  <button class="secondary" id="retry-app-load" type="button">もう一度読み込む</button>
+  <a href="./login.html">ログイン画面へ</a>
+</section>
+<div class="app" id="app" data-page="home" hidden>
   <div class="background" aria-hidden="true"></div>
   <main class="content">
     <section class="page active" id="home">
@@ -57,6 +64,22 @@
         <h2>テーマカラー</h2>
         <div class="theme-options"><button class="theme-choice" data-theme="purple"><i></i>むらさき</button><button class="theme-choice" data-theme="blue"><i></i>あお</button><button class="theme-choice" data-theme="green"><i></i>みどり</button><button class="theme-choice" data-theme="yellow"><i></i>きいろ</button></div>
       </article>
+      <article class="card settings-card" id="account-card">
+        <h2>アカウント</h2>
+        <p id="account-description">ログインしなくても使えます。記録はこのブラウザ内に保存され、ブラウザデータを削除すると失われる可能性があります。</p>
+        <p id="account-identity"></p>
+        <p id="cloud-status" role="status">認証状態を確認しています。</p>
+        <div id="guest-account-actions">
+          <a class="secondary account-link" href="./login.html?returnTo=./index.html%23settings">ログイン・データを保存</a>
+        </div>
+        <div id="signed-in-account-actions" hidden>
+          <button class="secondary" id="retry-cloud-sync" type="button" hidden>もう一度同期する</button>
+          <button class="secondary" id="discard-pending-changes" type="button" hidden>未保存変更を破棄してクラウドを読み直す</button>
+          <button class="secondary" id="logout" type="button">ログアウト</button>
+          <button class="secondary" id="delete-account" type="button">アカウント削除</button>
+        </div>
+        <p class="account-legal"><a href="./terms-draft.html">利用規約（草案）</a> ・ <a href="./privacy-draft.html">プライバシーポリシー（草案）</a></p>
+      </article>
       <article class="card settings-card"><h2>データ</h2><button class="secondary" id="export-csv">CSVで書き出す</button></article>
       <div class="speech settings-speech">自分のペースで<br>つかってね</div>
     </section>
@@ -82,8 +105,19 @@
     <button type="button" class="edit-delete" id="edit-delete">この記録を削除</button>
   </form>
 </dialog>
+<dialog id="import-dialog" class="account-dialog" aria-labelledby="import-title">
+  <h2 id="import-title">今までのきろくが見つかったよ。このアカウントに引き継ぐ？</h2>
+  <p id="import-account"></p>
+  <p>記録は確認してからこのアカウントへ追加します。元の端末内データは削除しません。</p>
+  <p id="import-feedback" role="alert"></p>
+  <div class="edit-actions">
+    <button class="secondary" id="import-later" type="button">あとで</button>
+    <button class="secondary" id="import-confirm" type="button">引き継ぐ</button>
+  </div>
+</dialog>
 <script src="expenses.js"></script>
 <script src="app.js"></script>
 <script src="home.js"></script>
+<script type="module" src="auth-app.js"></script>
 </body>
 </html>
