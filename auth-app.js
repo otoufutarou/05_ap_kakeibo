@@ -345,7 +345,7 @@ document.querySelector("#import-confirm").addEventListener("click", async () => 
   const button = document.querySelector("#import-confirm");
   button.disabled = true;
   try {
-    const local = validateExpenses(readLocalExpenses());
+    const local = validateExpenses(JSON.parse(localStorage.getItem("p-kakeibo-v1") || "[]"));
     const existingIds = new Set(baseline.map((item) => item.id));
     const merged = [...baseline, ...local.filter((item) => !existingIds.has(item.id))];
     const imported = await syncAccountExpenses(client, merged, baseline);

@@ -33,6 +33,10 @@ function persistExpenses(next) {
 }
 
 function deleteExpense(expense) {
+  if (window.pKakeiboAuth?.user) {
+    alert('安全のため、クラウド上の記録の削除は現在無効です。');
+    return false;
+  }
   if (!confirm('この記録を削除しますか？')) return false;
   persistExpenses(expenses.filter(item => item !== expense));
   return true;
