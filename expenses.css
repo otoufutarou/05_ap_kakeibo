@@ -42,3 +42,53 @@
 .edit-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
 .edit-actions button, .edit-delete { min-height: 44px; }
 .edit-delete { margin-top: 12px; padding: 0; border: 0; background: transparent; color: #8a2539; font-size: 12px; }
+
+.date-label { margin-top: 12px; }
+.date-control {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  width: 100%;
+  height: 46px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--primary-dark) 18%, white);
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: 0 3px 8px rgba(80, 70, 110, .05);
+  color: var(--text-secondary);
+  font-size: clamp(14px, 4vw, 16px);
+}
+.date-display { flex: 1; min-width: 0; white-space: nowrap; }
+.date-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: 8px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: var(--primary-dark);
+  stroke-width: 1.5;
+}
+#home .entry .date-input,
+.expense-editor .date-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.date-input::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+.date-control:focus-within {
+  outline: 2px solid var(--primary-dark);
+  outline-offset: 3px;
+}
+#selected-date-total { font-size: 13px; }
+#calendar-add { margin-top: 12px; }
