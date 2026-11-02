@@ -10,6 +10,8 @@ const divider = document.querySelector(".login-divider");
 const signupButton = document.querySelector("#show-signup");
 const formTitle = document.querySelector("#form-title");
 const forms = ["email-form", "signup-form", "reset-form", "new-password-form", "email-confirmation", "password-complete"];
+let emailLoginAttempt = 0;
+let emailLoginPending = false;
 
 function returnToUrl() {
   try {
@@ -35,6 +37,11 @@ function cleanCallbackUrl() {
 }
 
 function showForm(id, title, message = "") {
+  if (id !== "email-form" && emailLoginPending) {
+    emailLoginAttempt += 1;
+    emailLoginPending = false;
+    setBusy(document.querySelector("#email-form").querySelector('[type="submit"]'), false);
+  }
   authForms.hidden = false;
   loginActions.hidden = true;
   divider.hidden = true;
@@ -53,6 +60,11 @@ function showForm(id, title, message = "") {
 }
 
 function showLogin() {
+  if (emailLoginPending) {
+    emailLoginAttempt += 1;
+    emailLoginPending = false;
+    setBusy(document.querySelector("#email-form").querySelector('[type="submit"]'), false);
+  }
   authForms.hidden = true;
   loginActions.hidden = false;
   divider.hidden = false;
@@ -169,23 +181,36 @@ document.querySelector("#google-login").addEventListener("click", async (event) 
 
 document.querySelector("#email-form").addEventListener("submit", async (event) => {
   event.preventDefault();
+  if (emailLoginPending) return;
   const form = event.currentTarget;
   if (!form.reportValidity()) return;
   const button = form.querySelector('[type="submit"]');
+  const email = document.querySelector("#email").value.trim();
+  const password = document.querySelector("#password").value;
+  const attempt = ++emailLoginAttempt;
+  emailLoginPending = true;
   setBusy(button, true);
   setFeedback("ログインしています…");
   try {
     const client = await getSupabaseClient();
-    const { data, error } = await client.auth.signInWithPassword({
-      email: document.querySelector("#email").value.trim(),
-      password: document.querySelector("#password").value,
-    });
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (attempt !== emailLoginAttempt) return;
     if (error) throw error;
     if (!data.session) throw new Error("ログインセッションを確認できません。");
     location.replace(returnToUrl());
-  } catch {
-    setFeedback("ログインできませんでした。メールアドレスとパスワードを確認してください。", true);
-    setBusy(button, false);
+  } catch (error) {
+    if (attempt === emailLoginAttempt) {
+      const rateLimited = error?.status === 429
+        || ["over_request_rate_limit", "too_many_requests"].includes(error?.code);
+      setFeedback(rateLimited
+        ? "ログイン試行が多すぎます。しばらく待ってから再試行してください。"
+        : "ログインできませんでした。メールアドレスとパスワードを確認してください。", true);
+    }
+  } finally {
+    if (attempt === emailLoginAttempt) {
+      emailLoginPending = false;
+      setBusy(button, false);
+    }
   }
 });
 
