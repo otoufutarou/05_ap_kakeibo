@@ -1,6 +1,7 @@
 import { getSupabaseClient, isSupabaseConfigured } from "./supabase-client.js";
 import { supabaseConfig } from "./supabase-config.js";
 import { loadAccountData, saveAccountSettings, syncAccountExpenses, validateExpenses } from "./cloud-data.js";
+import { pendingStorageKey, readPending as inspectPending, preserveOriginal, storageFailure } from "./pending-data.js";
 
 const app = document.querySelector("#app");
 const loadError = document.querySelector("#app-load-error");
@@ -30,8 +31,11 @@ let retryTimer = null;
 let retryDelay = 1000;
 let retryInFlightEpoch = null;
 let expenseSyncInFlightEpoch = null;
+let expenseSyncPaused = false;
+let themeSyncPaused = false;
+let recoverySnapshot = null;
+let pendingWriteFailure = null;
 
-const pendingStorageKey = (id) => `p-kakeibo-cloud-pending:${id}`;
 const pendingThemeKey = (id) => `p-kakeibo-theme-pending:${id}`;
 const offeredKey = (id) => `p-kakeibo-import-offered:${id}`;
 const cloneExpenses = (items) => items.map((item) => ({ ...item }));
@@ -49,6 +53,7 @@ function showGuest() {
   pendingSave = null;
   pendingTheme = null;
   pendingRecoveryBlocked = false;
+  resetRecovery();
   pendingStorageUnavailable = false;
   pendingThemeStorageUnavailable = false;
   discardButton.hidden = true;
@@ -71,6 +76,7 @@ function showSignedIn(user, restoring = false) {
   pendingSave = null;
   pendingTheme = null;
   pendingRecoveryBlocked = false;
+  resetRecovery();
   pendingStorageUnavailable = false;
   pendingThemeStorageUnavailable = false;
   window.pKakeiboAuth = { status: restoring ? "restoring" : "signed-in", user };
@@ -81,34 +87,75 @@ function showSignedIn(user, restoring = false) {
 }
 
 function readPending(userId) {
+  let storage;
   try {
-    const raw = localStorage.getItem(pendingStorageKey(userId));
-    if (raw === null) return { state: "none" };
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object" || !Array.isArray(parsed.expenses)
-      || (parsed.expected !== null && parsed.expected !== undefined
-        && (!Array.isArray(parsed.expected) || parsed.expected.some((item) =>
-          !item || typeof item.id !== "string" || typeof item.updatedAt !== "string")))) {
-      throw new Error("invalid_pending_data");
-    }
-    return {
-      state: "valid",
-      pending: {
-        generation: Number.isSafeInteger(parsed.generation) ? parsed.generation : 0,
-        expenses: validateExpenses(parsed.expenses),
-        expected: Array.isArray(parsed.expected) ? parsed.expected : null,
-      },
-    };
-  } catch {
-    return { state: "invalid" };
+    storage = localStorage;
+  } catch (error) {
+    return { state: "invalid", reason: storageFailure(error) };
   }
+  return inspectPending(storage, userId);
+}
+
+const recoveryReasons = {
+  json: "保存値をJSONとして解析できません。",
+  structure: "未保存キューのexpensesが配列ではない、またはキューの構造が不正です。",
+  expenses: "支出の必須項目・金額・日付・重複IDなどに検証エラーがあります。",
+  expected: "競合判定用のexpectedに不正または欠落したID・更新日時があります。最新日時で補うと他端末の変更を上書きするため、自動補完しません。",
+  generation: "保存世代generationが0以上の安全な整数ではありません。",
+  version: "このアプリで対応していない保存形式のバージョンです。",
+  theme: "未保存のテーマ設定が対応する4色の値ではありません。元の値を保持し、支出も送信せず停止しました。",
+  account: "保存キーと記録内のアカウントが一致しません。別アカウントへの混在を防ぐため停止しました。",
+  storage_access: "ブラウザの保存領域にアクセスできません。アクセス許可の回復後に再確認してください。",
+  storage_quota: "保存容量が不足して原文の保護用コピーを確保できません。JSONを保存し、他の不要なデータの容量を確認してください。",
+  storage_verify: "原文の保護用コピーの保存を確認できません。",
+  legacy: "旧形式の記録です。競合情報がない場合は空のexpectedで復元し、既存クラウド記録と異なる内容はRPCの競合保護で停止します。元データの保護用コピーを確保してから復元します。",
+};
+
+function resetRecovery() {
+  recoverySnapshot = null;
+  expenseSyncPaused = false;
+  themeSyncPaused = false;
+  document.querySelector("#recover-legacy-pending").hidden = true;
+  document.querySelector("#view-cloud-records").hidden = true;
+  document.querySelector("#recovery-cloud-records").replaceChildren();
+  document.querySelector("#recovery-cloud-records").hidden = true;
+  document.querySelector("#recovery-cloud-status").textContent = "";
+  document.querySelector("#recovery-account").textContent = "";
+  document.querySelector("#recovery-detail").textContent = "";
+}
+
+function showRecovery(result) {
+  clearRetry();
+  pendingRecoveryBlocked = true;
+  recoverySnapshot = result;
+  app.hidden = true;
+  loadError.hidden = false;
+  document.querySelector("#recovery-account").textContent = `復旧対象：${activeUser.email || activeUser.id}`;
+  const report = result.report;
+  const counts = report
+    ? ` 全${report.total}件、検証通過${report.valid}件、要確認${report.total - report.valid}件。`
+    : "";
+  const issues = report?.issues.slice(0, 20).map((issue) => `${issue.index + 1}件目: ${issue.field}`).join(" / ");
+  document.querySelector("#recovery-detail").textContent = `診断: ${result.reason} — ${recoveryReasons[result.reason] || "原因を確認できません。"}${counts}${issues ? ` ${issues}` : ""}`;
+  document.querySelector("#recover-legacy-pending").hidden = result.reason !== "legacy";
+  document.querySelector("#view-cloud-records").hidden = false;
+  loadErrorMessage.textContent = `端末内の未保存データの安全な復元を確認できません。元データは削除せず残しています。上書きを防ぐため同期を停止しました。${counts}`;
+  setStatus("未保存データを保護しています。理由を確認し、元データをバックアップしてください。", true);
+}
+
+function protectPending(userId, result) {
+  const protection = preserveOriginal(localStorage, userId, result.raw);
+  if (!protection.ok) showRecovery({ ...result, reason: protection.reason });
+  return protection.ok;
 }
 
 function writePending(userId, pending) {
   try {
     localStorage.setItem(pendingStorageKey(userId), JSON.stringify(pending));
+    pendingWriteFailure = null;
     return true;
-  } catch {
+  } catch (error) {
+    pendingWriteFailure = storageFailure(error);
     return false;
   }
 }
@@ -139,7 +186,7 @@ function errorDetail(error) {
 
 function isRetryable(error) {
   const code = typeof error?.code === "string" ? error.code : "";
-  if (isConflict(error) || error?.code === "42501"
+  if (isConflict(error) || error?.code === "42501" || ["invalid_expenses", "sync_verification"].includes(code)
     || ["42P01", "42883"].includes(code)
     || code.startsWith("22") || code.startsWith("23")) return false;
   if (error?.status >= 400 && error.status < 500 && ![408, 429].includes(error.status)) return false;
@@ -152,7 +199,7 @@ function scheduleRetry() {
   retryDelay = Math.min(retryDelay * 2, 300000);
   retryTimer = setTimeout(() => {
     retryTimer = null;
-    retrySave();
+    retrySave(false);
   }, delay);
 }
 
@@ -167,8 +214,9 @@ function clearRetryIfIdle() {
 }
 
 async function flushPending(pending, userId, epoch) {
-  if (!client || !isCurrentAccount(userId, epoch) || pendingRecoveryBlocked) return;
-  pending.expected ??= baseline.map((item) => ({ id: item.id, updatedAt: item.updatedAt }));
+  if (!client || !isCurrentAccount(userId, epoch) || pendingRecoveryBlocked || expenseSyncPaused) return;
+  if (pendingSave?.generation !== pending.generation) return;
+  pending.expected ??= [];
   if (pendingSave?.generation === pending.generation && isCurrentAccount(userId, epoch)) {
     pendingStorageUnavailable = !writePending(userId, pending);
   }
@@ -177,6 +225,12 @@ async function flushPending(pending, userId, epoch) {
   try {
     const saved = await syncAccountExpenses(client, pending.expenses, pending.expected);
     if (!isCurrentAccount(userId, epoch)) return;
+    if (pending.expenses.some((expense) => !saved.some((item) => item.id === expense.id
+      && item.name === expense.name.trim() && item.amount === expense.amount && item.date === expense.date))) {
+      const error = new Error("保存結果の件数・内容を確認できません。未保存キューを保持しています。");
+      error.code = "sync_verification";
+      throw error;
+    }
     baseline = saved;
     if (pendingSave?.generation === pending.generation) {
       pendingSave = null;
@@ -203,10 +257,11 @@ async function flushPending(pending, userId, epoch) {
       pendingStorageUnavailable = !writePending(userId, pending);
     }
     const conflict = isConflict(error);
+    expenseSyncPaused = !isRetryable(error);
     discardButton.hidden = !conflict;
     setStatus(conflict
       ? `別の端末で記録が更新されています。新しい内容を確認してから同期してください。${pendingStorageUnavailable ? "未保存データはこの画面を閉じると失われる可能性があります。" : ""}`
-      : `クラウド保存に失敗しました（${errorDetail(error)}）。${pendingStorageUnavailable ? "未保存データはこの画面を閉じると失われる可能性があります。" : "未保存データはこの端末に保持されています。"}通信・Supabase設定を確認し、自動再試行または手動同期をお待ちください。`, true);
+      : `クラウド保存に失敗しました（${errorDetail(error)}）。${pendingStorageUnavailable ? `未保存データはこの画面を閉じると失われる可能性があります（${pendingWriteFailure}）。` : "未保存データはこの端末に保持されています。"}${expenseSyncPaused ? "形式・権限・保存結果の確認が必要なため自動再試行を停止しました。" : "通信を確認してください。自動再試行します。"}`, true);
     if (isRetryable(error)) scheduleRetry();
   } finally {
     if (expenseSyncInFlightEpoch === epoch) expenseSyncInFlightEpoch = null;
@@ -218,42 +273,46 @@ function queueSave(expenses) {
   const userId = activeUser.id;
   const epoch = accountEpoch;
   const item = {
+    ...pendingSave,
     generation: ++generation,
     expenses: cloneExpenses(expenses),
-    expected: baseline.map((expense) => ({ id: expense.id, updatedAt: expense.updatedAt })),
+    expected: pendingSave?.expected ?? baseline.map((expense) => ({ id: expense.id, updatedAt: expense.updatedAt })),
   };
   pendingSave = item;
   pendingStorageUnavailable = !writePending(userId, item);
   queue = queue.catch(() => {}).then(() => flushPending(item, userId, epoch));
 }
 
-async function retrySave() {
+async function retrySave(manual = true) {
   if (!activeUser || pendingRecoveryBlocked || retryInFlightEpoch === accountEpoch
     || expenseSyncInFlightEpoch === accountEpoch) return;
   const userId = activeUser.id;
   const epoch = accountEpoch;
+  if (manual) {
+    expenseSyncPaused = false;
+    themeSyncPaused = false;
+  }
   retryInFlightEpoch = epoch;
   try {
     if (!pendingSave) {
       const restored = readPending(userId);
-      if (restored.state === "invalid") {
-        pendingRecoveryBlocked = true;
-        app.hidden = true;
-        loadError.hidden = false;
-        loadErrorMessage.textContent = "端末内の未保存データを読み取れません。元データは削除せず残しています。上書きを防ぐため同期を停止しました。";
-        setStatus("未保存データの形式を確認できません。元データを保護するため自動同期を停止しました。", true);
+      if (restored.state === "invalid" || restored.legacy) {
+        showRecovery(restored.legacy ? { ...restored, reason: "legacy" } : restored);
         return;
       }
-      if (restored.state === "valid") pendingSave = restored.pending;
+      if (restored.state === "valid") {
+        if (!protectPending(userId, restored)) return;
+        pendingSave = restored.pending;
+      }
     }
-    if (pendingSave) {
+    if (pendingSave && !expenseSyncPaused) {
       const item = { ...pendingSave, generation: ++generation };
       pendingSave = item;
       pendingStorageUnavailable = !writePending(userId, item);
       queue = queue.catch(() => {}).then(() => flushPending(item, userId, epoch));
       await queue;
     }
-    if (pendingTheme && isCurrentAccount(userId, epoch)) {
+    if (pendingTheme && !themeSyncPaused && isCurrentAccount(userId, epoch)) {
       queueThemeSave(pendingTheme);
       await themeQueue;
     }
@@ -263,7 +322,7 @@ async function retrySave() {
 }
 
 function queueThemeSave(theme) {
-  if (!activeUser || !client) return;
+  if (!activeUser || !client || pendingRecoveryBlocked) return;
   const userId = activeUser.id;
   const epoch = accountEpoch;
   const version = ++themeGeneration;
@@ -275,7 +334,7 @@ function queueThemeSave(theme) {
     pendingThemeStorageUnavailable = true;
   }
   themeQueue = themeQueue.catch(() => {}).then(async () => {
-    if (!isCurrentAccount(userId, epoch) || version !== themeGeneration) return;
+    if (!isCurrentAccount(userId, epoch) || version !== themeGeneration || pendingRecoveryBlocked || themeSyncPaused) return;
     try {
       await saveAccountSettings(client, userId, theme);
       if (!isCurrentAccount(userId, epoch) || version !== themeGeneration) return;
@@ -290,7 +349,8 @@ function queueThemeSave(theme) {
       setStatus(pendingSave ? "テーマ設定は同期済みです。支出記録に未保存の変更があります。" : "テーマ設定をクラウドに保存しました。", Boolean(pendingSave));
     } catch (error) {
       if (isCurrentAccount(userId, epoch) && version === themeGeneration) {
-        setStatus(`テーマ設定の保存に失敗しました（${errorDetail(error)}）。${pendingThemeStorageUnavailable ? "未保存の設定はこの画面を閉じると失われる可能性があります。" : "未保存の設定はこの端末に保持されています。"}通信を確認し、自動再試行または手動同期をお待ちください。`, true);
+        themeSyncPaused = !isRetryable(error);
+        setStatus(`テーマ設定の保存に失敗しました（${errorDetail(error)}）。${pendingThemeStorageUnavailable ? "未保存の設定はこの画面を閉じると失われる可能性があります。" : "未保存の設定はこの端末に保持されています。"}${themeSyncPaused ? "権限・形式を確認してください。自動再試行を停止しました。" : "通信を確認してください。自動再試行します。"}`, true);
         if (isRetryable(error)) scheduleRetry();
       }
     }
@@ -322,32 +382,40 @@ function readLocalExpenses() {
   }
 }
 
-async function activateUser(user) {
+async function activateUser(user, approvedLegacyRaw) {
   window.pKakeiboAuth = { status: "restoring", user };
   showSignedIn(user, true);
   const epoch = accountEpoch;
   app.hidden = true;
+  document.querySelector("#view-cloud-records").hidden = false;
   setStatus("クラウドの記録を確認しています…");
   try {
+    const storedPending = readPending(user.id);
+    if (storedPending.state === "invalid") {
+      showRecovery(storedPending);
+      return;
+    }
+    if (storedPending.legacy && approvedLegacyRaw !== storedPending.raw) {
+      showRecovery({ ...storedPending, reason: "legacy" });
+      return;
+    }
+    if (storedPending.state === "valid" && !protectPending(user.id, storedPending)) return;
     const account = await loadAccountData(client);
     if (!isCurrentAccount(user.id, epoch)) return;
     baseline = account.expenses;
-    const storedPending = readPending(user.id);
-    if (storedPending.state === "invalid") {
-      pendingRecoveryBlocked = true;
-      loadError.hidden = false;
-      loadErrorMessage.textContent = "端末内の未保存データを読み取れません。元データは削除せず残しています。上書きを防ぐため同期を停止しました。";
-      setStatus("未保存データの形式を確認できません。元データを保護するため自動同期を停止しました。", true);
-      return;
-    }
     const pending = storedPending.state === "valid" ? storedPending.pending : null;
     pendingSave = pending;
     discardButton.hidden = true;
     try {
       const savedTheme = localStorage.getItem(pendingThemeKey(user.id));
+      if (savedTheme !== null && !["purple", "blue", "green", "yellow"].includes(savedTheme)) {
+        showRecovery({ reason: "theme" });
+        return;
+      }
       pendingTheme = ["purple", "blue", "green", "yellow"].includes(savedTheme) ? savedTheme : null;
-    } catch {
-      pendingTheme = null;
+    } catch (error) {
+      showRecovery({ reason: storageFailure(error) });
+      return;
     }
     window.pKakeiboApp.setExpenses(pending?.expenses || account.expenses);
     window.pKakeiboApp.applyTheme(pendingTheme || account.settings.theme);
@@ -360,12 +428,12 @@ async function activateUser(user) {
       : "クラウド保存済み・同期済み", Boolean(pending || pendingTheme));
     document.querySelector("#app").dataset.owner = user.id;
     if (!pending) offerLocalImport(user, readLocalExpenses());
-    if (pending || pendingTheme) retrySave();
+    if (pending || pendingTheme) retrySave(false);
   } catch (error) {
     if (!isCurrentAccount(user.id, epoch)) return;
-    window.pKakeiboApp.setExpenses([]);
     app.hidden = true;
     loadError.hidden = false;
+    document.querySelector("#recovery-detail").textContent = "クラウドへの通信・権限・設定を確認してください。端末内の原本は変更しません。";
     loadErrorMessage.textContent = `クラウドの記録を読み込めません（${errorDetail(error)}）。安全のため端末内の別の記録は表示していません。通信と設定を確認してください。`;
     setStatus("クラウドの記録を読み込めません。端末内の別の記録は表示せず、通信と設定を確認してください。", true);
   }
@@ -382,11 +450,11 @@ function activateGuest() {
   } catch {
     // The application can still run with its default theme.
   }
-  window.pKakeiboApp.applyTheme(theme);
+  window.pKakeiboApp.applyTheme(theme, false);
   delete app.dataset.owner;
 }
 
-document.querySelector("#retry-cloud-sync").addEventListener("click", retrySave);
+document.querySelector("#retry-cloud-sync").addEventListener("click", () => retrySave());
 discardButton.addEventListener("click", async () => {
   if (!activeUser || !client) return;
   if (!confirm("この端末の未保存変更（支出・テーマ）を破棄し、クラウドの最新内容に切り替えます。よろしいですか？")) return;
@@ -405,6 +473,9 @@ discardButton.addEventListener("click", async () => {
     window.pKakeiboApp.setExpenses(account.expenses);
     window.pKakeiboApp.applyTheme(account.settings.theme);
     window.pKakeiboAuth.status = "signed-in";
+    expenseSyncPaused = false;
+    themeSyncPaused = false;
+    clearRetry();
     discardButton.hidden = true;
     setStatus("クラウドの最新記録に切り替えました。");
   } catch {
@@ -412,8 +483,46 @@ discardButton.addEventListener("click", async () => {
   }
 });
 document.querySelector("#retry-app-load").addEventListener("click", () => {
+  if ((pendingSave || pendingTheme) && !pendingRecoveryBlocked) {
+    setStatus("画面内の未保存変更を保持しています。設定画面から同期を再試行してください。", true);
+    return;
+  }
   if (activeUser) activateUser(activeUser);
   else start();
+});
+document.querySelector("#recover-legacy-pending").addEventListener("click", () => {
+  if (!activeUser || recoverySnapshot?.reason !== "legacy") return;
+  if (!confirm("JSONバックアップが端末に保存されていることを確認してください。原文の保護用コピーを端末に確保し、全件を復元して自動同期します。既存クラウド記録と競合した場合は停止します。続けますか？")) return;
+  activateUser(activeUser, recoverySnapshot.raw);
+});
+document.querySelector("#view-cloud-records").addEventListener("click", async () => {
+  if (!activeUser || !client) return;
+  const userId = activeUser.id;
+  const epoch = accountEpoch;
+  const feedback = document.querySelector("#recovery-cloud-status");
+  const records = document.querySelector("#recovery-cloud-records");
+  records.replaceChildren();
+  records.hidden = true;
+  feedback.textContent = "このアカウントのクラウド記録を読み込んでいます…";
+  try {
+    const { data, error } = await client.auth.getSession();
+    if (!isCurrentAccount(userId, epoch)) return;
+    if (error || data.session?.user.id !== userId) throw new Error("アカウントが一致しません。再ログインして確認してください。");
+    const account = await loadAccountData(client);
+    if (!isCurrentAccount(userId, epoch)) return;
+    const verified = await client.auth.getSession();
+    if (!isCurrentAccount(userId, epoch)) return;
+    if (verified.error || verified.data.session?.user.id !== userId) throw new Error("アカウントが変わったため表示を停止しました。");
+    for (const expense of account.expenses) {
+      const row = document.createElement("p");
+      row.textContent = `${expense.date} / ${expense.name} / ${expense.amount}円`;
+      records.append(row);
+    }
+    records.hidden = false;
+    feedback.textContent = `${account.expenses.length}件取得（読み取り専用）。サーバーの返却上限により全件ではない場合があります。端末内の記録は変更していません。`;
+  } catch (error) {
+    if (isCurrentAccount(userId, epoch)) feedback.textContent = `クラウド記録を確認できません（${errorDetail(error)}）。原本は保持しています。`;
+  }
 });
 document.querySelector("#logout").addEventListener("click", async () => {
   if (!client || !activeUser) return;
@@ -506,10 +615,10 @@ window.addEventListener("p-kakeibo-theme-changed", async (event) => {
 window.addEventListener("online", () => {
   if (!activeUser || pendingRecoveryBlocked) return;
   clearRetry();
-  retrySave();
+  retrySave(false);
 });
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible" && activeUser && !pendingRecoveryBlocked) retrySave();
+  if (document.visibilityState === "visible" && activeUser && !pendingRecoveryBlocked) retrySave(false);
 });
 
 async function start() {

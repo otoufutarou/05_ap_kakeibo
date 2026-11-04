@@ -1,0 +1,44 @@
+[
+  {
+    "revision": "943d83b",
+    "pending": {
+      "generation": 1,
+      "expenses": [
+        {
+          "id": "09de03ef-0f5a-4b9d-a1c9-85b0375469d8",
+          "name": "なにか",
+          "amount": 100,
+          "date": "2026-10-23",
+          "createdAt": "2026-10-23T09:00:00.000Z",
+          "category": "food",
+          "legacyNote": { "keep": true }
+        }
+      ],
+      "expected": []
+    }
+  },
+  {
+    "revision": "ea6a975",
+    "pending": {
+      "generation": 3,
+      "expenses": [
+        {
+          "id": "09de03ef-0f5a-4b9d-a1c9-85b0375469d8",
+          "name": "なにか",
+          "amount": 200,
+          "date": "2026-10-23",
+          "createdAt": "2026-10-23T09:00:00.000Z",
+          "updatedAt": "2026-10-23T09:01:00.123456+00:00",
+          "category": 7,
+          "legacyNote": { "keep": true }
+        }
+      ],
+      "expected": [
+        {
+          "id": "09de03ef-0f5a-4b9d-a1c9-85b0375469d8",
+          "updatedAt": "2026-10-23T09:01:00.123456+00:00"
+        }
+      ]
+    }
+  }
+]

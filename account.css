@@ -77,3 +77,15 @@
 .app-load-error p {
   line-height: 1.7;
 }
+
+.app-load-error details,
+#recovery-cloud-records {
+  width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+#recovery-cloud-records {
+  max-height: 45dvh;
+  overflow-y: auto;
+}

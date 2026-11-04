@@ -13,7 +13,16 @@
 <section id="app-load-error" class="app-load-error" hidden>
   <h1>P型家計簿</h1>
   <p id="app-load-error-message" role="alert"></p>
-  <button class="secondary" id="retry-app-load" type="button">もう一度読み込む</button>
+  <p id="recovery-account"></p>
+  <details><summary>復旧できない理由と安全な手順</summary><p id="recovery-detail"></p><p>一部の記録だけを送信したり、原本を削除したりしません。まずJSONを保存してください。形式不正の記録は原本のコピーを使って確認・修復し、件数を照合する必要があります。</p></details>
+  <button class="secondary" type="button" data-backup>元データをバックアップする</button>
+  <p id="backup-feedback" role="status"></p>
+  <button class="secondary" id="retry-app-load" type="button">読み込みを再確認する</button>
+  <button class="secondary" id="recover-legacy-pending" type="button" hidden>バックアップ保存済み：旧形式を安全に復元する</button>
+  <button class="secondary" id="view-cloud-records" type="button" hidden>このアカウントのクラウド記録を読み取り専用で確認</button>
+  <p id="recovery-cloud-status" role="status"></p>
+  <div id="recovery-cloud-records" hidden></div>
+  <a href="./recovery.html">独立したバックアップ画面</a>
   <a href="./login.html">ログイン画面へ</a>
 </section>
 <div class="app" id="app" data-page="home" hidden>
@@ -115,6 +124,7 @@
     <button class="secondary" id="import-confirm" type="button">引き継ぐ</button>
   </div>
 </dialog>
+<script type="module" src="storage-backup.js"></script>
 <script src="expenses.js"></script>
 <script src="app.js"></script>
 <script src="home.js"></script>
