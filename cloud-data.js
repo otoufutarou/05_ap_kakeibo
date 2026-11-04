@@ -1,22 +1,37 @@
 const expenseFields = new Set(["id", "name", "amount", "date", "createdAt", "updatedAt", "category"]);
 
-export function validateExpenses(value) {
-  if (!Array.isArray(value)) throw new Error("ローカルの記録形式を確認できません。");
+export function inspectExpenses(value) {
+  if (!Array.isArray(value)) return { total: 0, valid: 0, issues: [{ field: "expenses" }] };
   const ids = new Set();
-  return value.map((expense) => {
+  const issues = [];
+  value.forEach((expense, index) => {
+    const fields = [];
     const [year, month, day] = typeof expense?.date === "string" ? expense.date.split("-").map(Number) : [];
     const date = new Date(Date.UTC(year, month - 1, day));
-    if (!expense || typeof expense !== "object"
-      || typeof expense.id !== "string" || !expense.id || ids.has(expense.id)
-      || typeof expense.name !== "string" || !expense.name.trim() || expense.name.trim().length > 100
-      || !Number.isSafeInteger(expense.amount) || expense.amount <= 0
-      || !/^\d{4}-\d{2}-\d{2}$/.test(expense.date)
-      || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
-      throw new Error("形式が不正、またはIDが重複した記録がありました。元の記録は変更していません。");
-    }
-    ids.add(expense.id);
-    return { ...expense, name: expense.name.trim() };
+    if (!expense || typeof expense !== "object" || Array.isArray(expense)) fields.push("record");
+    if (typeof expense?.id !== "string" || !expense.id) fields.push("id");
+    else if (ids.has(expense.id)) fields.push("duplicate_id");
+    if (typeof expense?.name !== "string" || !expense.name.trim() || expense.name.trim().length > 100) fields.push("name");
+    if (!Number.isSafeInteger(expense?.amount) || expense.amount <= 0) fields.push("amount");
+    if (typeof expense?.date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(expense.date)
+      || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) fields.push("date");
+    if (expense?.createdAt !== undefined && expense.createdAt !== null && expense.createdAt !== ""
+      && (typeof expense.createdAt !== "string" || !Number.isFinite(Date.parse(expense.createdAt)))) fields.push("createdAt");
+    if (typeof expense?.id === "string") ids.add(expense.id);
+    if (fields.length) issues.push({ index, field: fields.join(", ") });
   });
+  return { total: value.length, valid: value.length - issues.length, issues };
+}
+
+export function validateExpenses(value) {
+  const report = inspectExpenses(value);
+  if (report.issues.length) {
+    const error = new Error("形式が不正、またはIDが重複した記録がありました。元の記録は変更していません。");
+    error.code = "invalid_expenses";
+    error.report = report;
+    throw error;
+  }
+  return value.map((expense) => ({ ...expense }));
 }
 
 function fromRow(row) {

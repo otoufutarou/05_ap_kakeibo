@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>端末データの保護 — P型家計簿</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="account.css">
+</head>
+<body>
+  <main class="app-load-error">
+    <h1>端末データの保護</h1>
+    <p>通常画面を開けなくても、このブラウザの記録とアカウント別の未保存データを原文のままJSONに保存できます。ログインやクラウドへの送信は行いません。</p>
+    <p>このページは元データを変更・削除しません。バックアップには支出内容が含まれます。安全な場所に保存し、公開しないでください。認証用の保存キーは含めません。</p>
+    <button class="secondary" type="button" data-backup>元データをバックアップする</button>
+    <p id="backup-feedback" role="status"></p>
+    <a href="./index.html">読み込みを再確認する</a>
+  </main>
+  <script type="module" src="storage-backup.js"></script>
+</body>
+</html>
