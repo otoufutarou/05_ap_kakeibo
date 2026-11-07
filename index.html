@@ -18,6 +18,7 @@
   <button class="secondary" type="button" data-backup>元データをバックアップする</button>
   <p id="backup-feedback" role="status"></p>
   <button class="secondary" id="retry-app-load" type="button">読み込みを再確認する</button>
+  <button class="secondary" id="open-cloud-read-only" type="button" hidden>クラウドの記録を読み取り専用で開く</button>
   <button class="secondary" id="recover-legacy-pending" type="button" hidden>バックアップ保存済み：旧形式を安全に復元する</button>
   <button class="secondary" id="view-cloud-records" type="button" hidden>このアカウントのクラウド記録を読み取り専用で確認</button>
   <p id="recovery-cloud-status" role="status"></p>
@@ -27,6 +28,7 @@
 </section>
 <div class="app" id="app" data-page="home" hidden>
   <div class="background" aria-hidden="true"></div>
+  <p id="readonly-mode-notice" class="readonly-mode-notice" role="status" hidden></p>
   <main class="content">
     <section class="page active" id="home">
       <header class="hero"><h1>P型家計簿</h1><p>今日つかった分を登録してね<br>だいたいでいいよ</p></header>

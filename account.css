@@ -89,3 +89,22 @@
   max-height: 45dvh;
   overflow-y: auto;
 }
+
+.readonly-mode-notice {
+  position: relative;
+  z-index: 1;
+  margin: 12px 16px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--primary);
+  border-radius: 12px;
+  color: var(--primary-dark);
+  background: var(--scene);
+  line-height: 1.5;
+}
+
+#app[data-readonly="true"] #expense-form,
+#app[data-readonly="true"] [data-theme],
+#app[data-readonly="true"] .log-row button {
+  pointer-events: none;
+  opacity: 0.55;
+}

@@ -28,10 +28,21 @@ export function validateExpenses(value) {
   if (report.issues.length) {
     const error = new Error("形式が不正、またはIDが重複した記録がありました。元の記録は変更していません。");
     error.code = "invalid_expenses";
+    error.syncStage = "local_validation";
     error.report = report;
     throw error;
   }
   return value.map((expense) => ({ ...expense }));
+}
+
+function syncError(error, syncStage) {
+  const result = new Error(error?.message || "支出の同期に失敗しました。");
+  result.name = error?.name || "Error";
+  for (const key of ["code", "status", "details", "hint"]) {
+    if (error?.[key] !== undefined) result[key] = error[key];
+  }
+  result.syncStage = syncStage;
+  return result;
 }
 
 function fromRow(row) {
@@ -77,16 +88,38 @@ export async function loadAccountData(client) {
 }
 
 export async function syncAccountExpenses(client, desired, expected) {
-  const safeExpenses = validateExpenses(desired);
-  const { data, error } = await client.rpc("p_kakeibo_sync_expenses", {
-    p_expenses: safeExpenses.map(toRow),
-    p_expected: expected.map((expense) => ({
-      source_expense_id: expense.id,
-      updated_at: expense.updatedAt,
-    })),
-  });
-  if (error) throw error;
-  return (data || []).map(fromRow);
+  let safeExpenses;
+  let args;
+  try {
+    safeExpenses = validateExpenses(desired);
+    if (!Array.isArray(expected)) throw new TypeError("競合確認データの形式が不正です。");
+    args = {
+      p_expenses: safeExpenses.map(toRow),
+      p_expected: expected.map((expense) => ({
+        source_expense_id: expense.id,
+        updated_at: expense.updatedAt,
+      })),
+    };
+  } catch (error) {
+    throw syncError(error, error.syncStage || "local_validation");
+  }
+  let result;
+  try {
+    result = await client.rpc("p_kakeibo_sync_expenses", args);
+  } catch (error) {
+    throw syncError(error, "rpc_transport");
+  }
+  if (result.error) throw syncError(result.error, "rpc_response");
+  if (!Array.isArray(result.data)) {
+    const error = new Error("RPCの成功応答に支出一覧がありません。");
+    error.code = "sync_response_invalid";
+    throw syncError(error, "response_parse");
+  }
+  try {
+    return result.data.map(fromRow);
+  } catch (error) {
+    throw syncError(error, "response_parse");
+  }
 }
 
 export async function saveAccountSettings(client, userId, theme) {
