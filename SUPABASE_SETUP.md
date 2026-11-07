@@ -99,3 +99,43 @@ Supabaseの外部プロジェクト作成や本番設定変更は、このリポ
 - 利用規約・プライバシーポリシーは草案で、運営者名、連絡先、提供地域、データ保持/バックアップ期間、委託先/データリージョン、法的根拠などの確認が必要です。草案のまま本番公開完了としないでください。
 - アカウント削除はサーバー関数を用意しましたが、設定・デプロイ・実環境テストは未実施です。
 - RLS・同期SQLテストはローカルPostgreSQLで実行済みです。管理者の承認後に、実際のSupabase開発環境でも再検証してください。
+
+### 実環境でクラウド保存に失敗した場合
+
+このリポジトリだけでは、Supabase Dashboard上で現在適用されているSQL、実アカウントの認証状態、HTTP応答を確認できません。まず設定画面の保存エラーに表示される段階・HTTP status・Supabase/PostgreSQL code・message/details/hintを記録してください。`RPC通信（送信・応答受信の結果は不明）`はブラウザーが応答を得られなかった状態で、サーバー側の保存成否は断定できません。同一IDでの再試行はRPCが重複登録を防ぎます。支出内容、認証情報、トークン、鍵をConsoleやチケットへ貼り付けないでください。
+
+Supabase SQL Editorで次の読み取り専用SQLを実行し、RPCの定義・所有者・実行権限、RLSポリシー、適用済みmigrationをリポジトリのmigrationと照合してください。既存データや権限は変更しません。
+
+```sql
+select
+  p.oid::regprocedure as function_signature,
+  owner.rolname as function_owner,
+  p.prosecdef as security_definer,
+  p.proconfig as function_settings,
+  has_function_privilege('authenticated', p.oid, 'execute') as authenticated_can_execute,
+  has_function_privilege('anon', p.oid, 'execute') as anon_can_execute,
+  pg_get_functiondef(p.oid) as function_definition
+from pg_proc p
+join pg_roles owner on owner.oid = p.proowner
+where p.oid = 'public.p_kakeibo_sync_expenses(jsonb,jsonb)'::regprocedure;
+
+select schemaname, tablename, policyname, roles, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('expenses', 'user_settings')
+order by tablename, policyname;
+
+select
+  has_table_privilege('authenticated', 'public.expenses', 'select') as expenses_select,
+  has_table_privilege('authenticated', 'public.expenses', 'insert') as expenses_insert,
+  has_table_privilege('authenticated', 'public.expenses', 'update') as expenses_update,
+  has_table_privilege('authenticated', 'public.expenses', 'delete') as expenses_delete;
+
+select version, name
+from supabase_migrations.schema_migrations
+where version = '20261023000000';
+```
+
+期待値はRPC署名が`(jsonb, jsonb)`、所有者が`postgres`、`security_definer`がtrue、`search_path`が空、authenticatedのみ実行可で、expensesの直接書き込み権限はなく、RLSポリシーが所有者に限定されていることです。migration台帳の1行は適用記録であり、実際の関数定義・権限が正しい証明ではありません。SQL結果に差異があれば、承認なしに修復SQLを実行せず、まず開発プロジェクトでmigrationとRLS/RPCテストを照合してください。
+
+実ブラウザーの保存確認は、開発プロジェクトと専用テストアカウント、新規プロフィールで行います。設定画面でエラーがないことだけでなく、支出登録後の成功表示、同じユーザーで再読み込み後の取得、別ブラウザーからの取得を確認してください。アプリが読み取り専用の復旧表示を開いた場合、未保存データは原本を保持したまま書き込みを停止しています。原因を確認するまで破棄・上書き・手動SQLによるデータ変更を行わないでください。

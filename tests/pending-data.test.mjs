@@ -85,6 +85,31 @@ test("RPC receives preserved legacy metadata, stable IDs and exact microsecond c
   assert.deepEqual(request.args.p_expenses[0].metadata, { category: expense.category, extra: expense.extra });
 });
 
+test("sync diagnostics distinguish local validation, transport, RPC response, and response parsing", async () => {
+  const valid = [{ id: "expense", name: "test", amount: 10, date: "2026-11-04" }];
+  const expected = [];
+  const notCalled = { rpc: async () => assert.fail("invalid inputs must not call the RPC") };
+  await assert.rejects(syncAccountExpenses(notCalled, [{ ...valid[0], amount: 0 }], expected),
+    (error) => error.syncStage === "local_validation" && error.code === "invalid_expenses");
+
+  await assert.rejects(syncAccountExpenses({
+    rpc: async () => { throw new TypeError("Failed to fetch"); },
+  }, valid, expected), (error) => error.syncStage === "rpc_transport" && error.message === "Failed to fetch");
+
+  await assert.rejects(syncAccountExpenses({
+    rpc: async () => ({
+      data: null,
+      error: { status: 400, code: "22023", message: "invalid_sync_request", details: "bad input", hint: "check shape" },
+    }),
+  }, valid, expected), (error) => error.syncStage === "rpc_response"
+    && error.status === 400 && error.code === "22023"
+    && error.details === "bad input" && error.hint === "check shape");
+
+  await assert.rejects(syncAccountExpenses({
+    rpc: async () => ({ data: null, error: null }),
+  }, valid, expected), (error) => error.syncStage === "response_parse" && error.code === "sync_response_invalid");
+});
+
 test("the real home renderer tolerates missing createdAt and boots without storage access or writes", async () => {
   const source = await readFile(new URL("../app.js", import.meta.url), "utf8");
   const element = () => ({

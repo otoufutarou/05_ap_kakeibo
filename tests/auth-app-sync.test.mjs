@@ -223,6 +223,23 @@ test("no pending data opens the normal home without cloud writes", async () => {
   assert.equal(app.syncCalls.length, 0);
 });
 
+test("a temporary cloud-load failure still opens a valid account-scoped pending snapshot", async () => {
+  const raw = snapshot();
+  const app = await createApp({
+    fakeTimers: true,
+    pendingValue: raw,
+    load: async () => { throw new TypeError("Failed to fetch"); },
+    sync: async () => { throw new TypeError("Failed to fetch"); },
+  });
+
+  assert.equal(app.elements.get("#app").hidden, false);
+  assert.equal(app.elements.get("#app-load-error").hidden, true);
+  assert.equal(app.expensesShown.at(-1)[0].id, expense.id);
+  assert.match(app.elements.get("#cloud-status").textContent, /クラウド保存に失敗しました/);
+  assert.deepEqual(JSON.parse(app.storage.get(pendingKey)).expenses, [expense]);
+  assert.equal(app.syncCalls.length, 1);
+});
+
 test("historical writer formats restore all records and preserve their exact original", async () => {
   const fixtures = JSON.parse(await readFile(new URL("./fixtures/pending-history.json", import.meta.url), "utf8"));
   for (const fixture of fixtures) {
@@ -356,6 +373,28 @@ test("conflicts and permission failures stop automatic retries and preserve old 
   }
 });
 
+test("RPC errors show HTTP status, database code, message, details, and hint", async () => {
+  const app = await createApp({
+    pendingValue: snapshot(),
+    fakeTimers: true,
+    sync: async () => {
+      throw {
+        status: 403,
+        code: "42501",
+        message: "permission denied",
+        details: "RPC execute privilege is missing",
+        hint: "grant execute",
+      };
+    },
+  });
+  const status = app.elements.get("#cloud-status").textContent;
+  assert.match(status, /HTTP 403/);
+  assert.match(status, /code 42501/);
+  assert.match(status, /permission denied/);
+  assert.match(status, /RPC execute privilege is missing/);
+  assert.match(status, /grant execute/);
+});
+
 test("another user's pending queue is neither displayed nor synchronized", async () => {
   const otherRaw = snapshot([{ ...expense, id: "other-expense" }]);
   const app = await createApp({ storedEntries: [["p-kakeibo-cloud-pending:user-2", otherRaw]] });
@@ -389,6 +428,32 @@ test("cloud preview refuses a session for a different account", async () => {
   await app.elements.get("#view-cloud-records").listeners.get("click")();
   assert.equal(app.elements.get("#recovery-cloud-records").hidden, true);
   assert.match(app.elements.get("#recovery-cloud-status").textContent, /アカウントが一致しません/);
+});
+
+test("invalid pending data can open verified cloud records in read-only mode", async () => {
+  const raw = "{broken";
+  const app = await createApp({ pendingValue: raw, accountExpenses: [expense] });
+  await app.elements.get("#open-cloud-read-only").listeners.get("click")();
+
+  assert.equal(app.elements.get("#app").hidden, false);
+  assert.equal(app.elements.get("#app-load-error").hidden, true);
+  assert.equal(app.elements.get("#app").dataset.readonly, "true");
+  assert.equal(app.context.window.pKakeiboAuth.readOnly, true);
+  assert.equal(app.expensesShown.at(-1)[0].id, expense.id);
+  assert.equal(app.storage.get(pendingKey), raw);
+  assert.equal(app.syncCalls.length, 0);
+
+  let prevented = false;
+  app.documentListeners.get("submit")({
+    type: "submit",
+    preventDefault() { prevented = true; },
+    stopImmediatePropagation() {},
+  });
+  assert.equal(prevented, true);
+  app.windowListeners.get("p-kakeibo-data-changed")({ detail: { expenses: [] } });
+  await settle();
+  assert.equal(app.syncCalls.length, 0);
+  assert.equal(app.storage.get(pendingKey), raw);
 });
 
 test("late cloud preview responses cannot display an old account's records", async () => {
