@@ -99,7 +99,8 @@ test("sync diagnostics distinguish local validation, transport, RPC response, an
   await assert.rejects(syncAccountExpenses({
     rpc: async () => ({
       data: null,
-      error: { status: 400, code: "22023", message: "invalid_sync_request", details: "bad input", hint: "check shape" },
+      status: 400,
+      error: { code: "22023", message: "invalid_sync_request", details: "bad input", hint: "check shape" },
     }),
   }, valid, expected), (error) => error.syncStage === "rpc_response"
     && error.status === 400 && error.code === "22023"
@@ -108,6 +109,31 @@ test("sync diagnostics distinguish local validation, transport, RPC response, an
   await assert.rejects(syncAccountExpenses({
     rpc: async () => ({ data: null, error: null }),
   }, valid, expected), (error) => error.syncStage === "response_parse" && error.code === "sync_response_invalid");
+});
+
+test("invalid concurrency IDs and timestamps stop before RPC without modifying the input", async () => {
+  const client = { rpc: async () => assert.fail("invalid concurrency data must never be sent") };
+  const timestamp = "2026-11-08T00:00:00.123456+00:00";
+  for (const expected of [
+    [{ id: expense.id }], [{ id: expense.id, updatedAt: null }],
+    [{ id: expense.id, updatedAt: "invalid" }], [{ id: "", updatedAt: timestamp }],
+    [{ id: 1, updatedAt: timestamp }],
+    [{ id: expense.id, updatedAt: timestamp }, { id: expense.id, updatedAt: timestamp }],
+  ]) {
+    const before = JSON.stringify(expected);
+    await assert.rejects(syncAccountExpenses(client, [expense], expected),
+      (error) => error.code === "invalid_expected" && error.syncStage === "local_validation");
+    assert.equal(JSON.stringify(expected), before);
+  }
+});
+
+test("successful RPC rows without concurrency tokens cannot become a new baseline", async () => {
+  const client = { rpc: async () => ({
+    data: [{ source_expense_id: expense.id, name: expense.name, amount: expense.amount, expense_date: expense.date }],
+    error: null,
+  }) };
+  await assert.rejects(syncAccountExpenses(client, [expense], []),
+    (error) => error.code === "sync_response_invalid" && error.syncStage === "response_parse");
 });
 
 test("the real home renderer tolerates missing createdAt and boots without storage access or writes", async () => {

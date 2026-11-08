@@ -271,7 +271,7 @@ async function flushPending(pending, userId, epoch) {
       error.syncStage = "response_verification";
       throw error;
     }
-    baseline = saved;
+    baseline = cloneExpenses(saved);
     if (pendingSave?.generation === pending.generation) {
       pendingSave = null;
       pendingStorageUnavailable = false;
@@ -443,7 +443,7 @@ async function activateUser(user, approvedLegacyRaw) {
     if (storedPending.state === "valid" && !protectPending(user.id, storedPending)) return;
     const account = await loadAccountData(client);
     if (!isCurrentAccount(user.id, epoch)) return;
-    baseline = account.expenses;
+    baseline = cloneExpenses(account.expenses);
     const pending = storedPending.state === "valid" ? storedPending.pending : null;
     pendingSave = pending;
     discardButton.hidden = true;
@@ -525,7 +525,7 @@ openCloudReadOnlyButton.addEventListener("click", async () => {
     if (after.error || after.data.session?.user.id !== user.id) {
       throw new Error("読み込み中にアカウントが変わったため表示を停止しました。");
     }
-    baseline = account.expenses;
+    baseline = cloneExpenses(account.expenses);
     window.pKakeiboApp.setExpenses(account.expenses);
     window.pKakeiboApp.applyTheme(account.settings.theme, false);
     setReadOnlyMode(true);
@@ -564,7 +564,7 @@ discardButton.addEventListener("click", async () => {
   try {
     const account = await loadAccountData(client);
     if (!isCurrentAccount(userId, epoch)) return;
-    baseline = account.expenses;
+    baseline = cloneExpenses(account.expenses);
     pendingSave = null;
     discardButton.hidden = true;
     pendingTheme = null;
@@ -695,7 +695,7 @@ document.querySelector("#import-confirm").addEventListener("click", async () => 
     const importedIds = new Set(imported.map((item) => item.id));
     const missing = local.filter((item) => !importedIds.has(item.id));
     if (missing.length) throw new Error("一部の記録を確認できませんでした。元の記録は保持されています。");
-    baseline = imported;
+    baseline = cloneExpenses(imported);
     window.pKakeiboApp.setExpenses(imported);
     importDialog.close();
     setStatus(`${local.length}件の記録を確認して引き継ぎました。端末内の元データは残しています。`);
