@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import vm from "node:vm";
-import { validateExpenses } from "../cloud-data.js";
+import { validateExpenses, syncAccountExpenses } from "../cloud-data.js";
 import { pendingStorageKey, readPending as inspectPending, preserveOriginal, storageFailure } from "../pending-data.js";
 import { collectBackup } from "../storage-backup.js";
 
@@ -13,6 +13,8 @@ class Element {
   listeners = new Map();
   attributes = new Map();
   children = [];
+  value = "";
+  classList = { toggle() {} };
 
   replaceChildren(...children) { this.children = children; }
   append(child) { this.children.push(child); }
@@ -24,6 +26,11 @@ class Element {
   setAttribute(name, value) {
     this.attributes.set(name, value);
   }
+
+  showModal() {}
+  close() {}
+  setCustomValidity() {}
+  reportValidity() { return true; }
 }
 
 async function settle() {
@@ -31,7 +38,8 @@ async function settle() {
 }
 
 async function createApp({ pendingValue, sync, storageBlocked = false, readBlocked = false,
-  onLine = true, accountExpenses = [], confirmResult = false, storedEntries = [], load, fakeTimers = false } = {}) {
+  onLine = true, accountExpenses = [], confirmResult = false, storedEntries = [], load, fakeTimers = false,
+  realHome = false, rpc } = {}) {
   const elements = new Map();
   const windowListeners = new Map();
   const documentListeners = new Map();
@@ -46,6 +54,7 @@ async function createApp({ pendingValue, sync, storageBlocked = false, readBlock
   const syncCalls = [];
   const timers = [];
   const client = {
+    rpc,
     auth: {
       getSession: async () => ({ data: { session: { user } }, error: null }),
       onAuthStateChange(callback) {
@@ -58,7 +67,10 @@ async function createApp({ pendingValue, sync, storageBlocked = false, readBlock
   const context = {
     document: {
       querySelector: getElement,
+      querySelectorAll: () => [],
       createElement: () => new Element(),
+      createElementNS: () => new Element(),
+      body: new Element(),
       addEventListener(type, listener) {
         documentListeners.set(type, listener);
       },
@@ -75,6 +87,10 @@ async function createApp({ pendingValue, sync, storageBlocked = false, readBlock
       addEventListener(type, listener) {
         windowListeners.set(type, listener);
       },
+      dispatchEvent(event) {
+        windowListeners.get(event.type)?.(event);
+      },
+      scrollTo() {},
     },
     location: { hash: "" },
     navigator: { onLine },
@@ -97,15 +113,21 @@ async function createApp({ pendingValue, sync, storageBlocked = false, readBlock
     saveAccountSettings: async () => {},
     syncAccountExpenses: async (_client, expenses, expected) => {
       syncCalls.push({ expenses, expected });
-      return sync ? sync(expenses, expected) : expenses;
+      return rpc ? syncAccountExpenses(_client, expenses, expected)
+        : sync ? sync(expenses, expected) : expenses;
     },
     validateExpenses, pendingStorageKey, inspectPending, preserveOriginal, storageFailure,
     supabaseConfig: { url: "https://example.test", publishableKey: "public" },
     setTimeout: fakeTimers ? (callback, delay) => { const timer = { callback, delay }; timers.push(timer); return timer; } : setTimeout,
     clearTimeout: fakeTimers ? (timer) => { timer.cancelled = true; } : clearTimeout,
     confirm: () => confirmResult,
+    crypto, CustomEvent,
   };
   vm.createContext(context);
+  if (realHome) {
+    vm.runInContext(await readFile(new URL("../app.js", import.meta.url), "utf8"), context);
+    vm.runInContext(await readFile(new URL("../expenses.js", import.meta.url), "utf8"), context);
+  }
   vm.runInContext(source, context);
   await new Promise((resolve) => setImmediate(resolve));
   await new Promise((resolve) => setImmediate(resolve));
@@ -121,6 +143,125 @@ async function createApp({ pendingValue, sync, storageBlocked = false, readBlock
     timers,
   };
 }
+
+test("real first registration never puts an unsaved expense in the cloud baseline", async () => {
+  const accountExpenses = [];
+  let request;
+  const app = await createApp({
+    realHome: true,
+    accountExpenses,
+    rpc: async (_name, args) => {
+      request = JSON.parse(JSON.stringify(args));
+      return {
+        data: args.p_expenses.map((row) => ({ ...row, updated_at: "2026-11-08T00:00:00.123456+00:00" })),
+        error: null,
+      };
+    },
+  });
+  app.context.document.querySelector("#expense-name").value = "test";
+  app.context.document.querySelector("#expense-amount").value = "500";
+  app.elements.get("#expense-form").onsubmit({
+    preventDefault() {}, target: { reportValidity: () => true, reset() {} },
+  });
+  await settle();
+  assert.equal(request.p_expenses.length, 1);
+  assert.deepEqual(request.p_expected, []);
+  assert.equal(app.syncCalls[0].expected.length, 0);
+  assert.equal(app.storage.has("p-kakeibo-cloud-pending:user-1"), false);
+  assert.match(app.elements.get("#cloud-status").textContent, /クラウド保存済み/);
+});
+
+test("real registrations, editing, and reload preserve only confirmed microsecond concurrency tokens", async () => {
+  const requests = [];
+  let saved = [];
+  let version = 0;
+  const rpc = async (_name, args) => {
+    requests.push(JSON.parse(JSON.stringify(args)));
+    const timestamp = `2026-11-08T00:00:00.12345${++version}+00:00`;
+    const rows = args.p_expenses.map((row) => ({ ...row, updated_at: timestamp }));
+    saved = rows.map((row) => ({
+      id: row.source_expense_id, name: row.name, amount: row.amount, date: row.expense_date,
+      createdAt: row.created_at, updatedAt: row.updated_at,
+    }));
+    return { data: rows, error: null };
+  };
+  const app = await createApp({ realHome: true, rpc });
+  const submit = async () => {
+    app.context.document.querySelector("#expense-name").value = "test";
+    app.context.document.querySelector("#expense-amount").value = "500";
+    app.elements.get("#expense-form").onsubmit({
+      preventDefault() {}, target: { reportValidity: () => true, reset() {} },
+    });
+    await settle();
+  };
+  await submit();
+  assert.deepEqual(requests[0].p_expected, []);
+  const first = saved[0];
+  await submit();
+  assert.deepEqual(requests[1].p_expected, [{
+    source_expense_id: first.id, updated_at: first.updatedAt,
+  }]);
+  assert.equal(saved.length, 2);
+  const beforeEdit = saved.map((item) => ({ source_expense_id: item.id, updated_at: item.updatedAt }));
+  app.context.openExpenseEditor(app.context.window.pKakeiboApp.getExpenses()[0], null);
+  app.elements.get("#edit-amount").value = "600";
+  app.elements.get("#edit-expense-form").listeners.get("submit")({ preventDefault() {} });
+  await settle();
+  assert.deepEqual(requests[2].p_expected, beforeEdit);
+  assert.equal(saved[0].amount, 600);
+  assert.equal(app.storage.has("p-kakeibo-cloud-pending:user-1"), false);
+
+  const reloaded = await createApp({ realHome: true, rpc, accountExpenses: saved });
+  assert.equal(requests.length, 3);
+  assert.equal(reloaded.context.window.pKakeiboApp.getExpenses().length, 2);
+  assert.equal(reloaded.context.window.pKakeiboApp.getExpenses()[0].amount, 600);
+});
+
+test("real cloud synchronization rejects another device's conflict and retains the original pending tokens", async () => {
+  const original = { id: "existing", name: "test", amount: 500, date: "2026-11-08",
+    updatedAt: "2026-11-08T00:00:00.123456+00:00" };
+  let request;
+  const app = await createApp({
+    realHome: true, accountExpenses: [original],
+    rpc: async (_name, args) => {
+      request = JSON.parse(JSON.stringify(args));
+      return { data: null, error: { code: "40001", message: "sync_conflict" }, status: 409 };
+    },
+  });
+  app.context.openExpenseEditor(app.context.window.pKakeiboApp.getExpenses()[0], null);
+  app.elements.get("#edit-amount").value = "600";
+  app.elements.get("#edit-expense-form").listeners.get("submit")({ preventDefault() {} });
+  await settle();
+  assert.equal(request.p_expected[0].updated_at, original.updatedAt);
+  const pending = JSON.parse(app.storage.get("p-kakeibo-cloud-pending:user-1"));
+  assert.equal(pending.expected[0].updatedAt, original.updatedAt);
+  assert.equal(pending.expenses[0].amount, 600);
+  assert.equal(app.syncCalls.length, 1);
+  assert.match(app.elements.get("#cloud-status").textContent, /別の端末/);
+});
+
+test("missing baseline timestamps stop real synchronization locally and keep all unsaved records", async () => {
+  let calls = 0;
+  const app = await createApp({
+    realHome: true,
+    accountExpenses: [{ id: "existing", name: "test", amount: 500, date: "2026-11-08" }],
+    rpc: async () => { calls += 1; assert.fail("missing timestamps must not reach the RPC"); },
+  });
+  app.context.document.querySelector("#expense-name").value = "test";
+  app.context.document.querySelector("#expense-amount").value = "500";
+  app.elements.get("#expense-form").onsubmit({
+    preventDefault() {}, target: { reportValidity: () => true, reset() {} },
+  });
+  await settle();
+  assert.equal(calls, 0);
+  const raw = app.storage.get("p-kakeibo-cloud-pending:user-1");
+  assert.equal(JSON.parse(raw).expenses.length, 2);
+  assert.match(app.elements.get("#cloud-status").textContent, /invalid_expected/);
+  app.documentListeners.get("visibilitychange")();
+  await settle();
+  assert.equal(calls, 0);
+  assert.equal(app.storage.get("p-kakeibo-cloud-pending:user-1"), raw);
+});
 
 test("restored pending expenses are synchronized automatically", async () => {
   const pending = JSON.stringify({ generation: 3, expenses: [], expected: [] });

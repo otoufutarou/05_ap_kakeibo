@@ -1,4 +1,4 @@
-import { inspectExpenses, validateExpenses } from "./cloud-data.js";
+import { inspectExpenses, validateExpenses, isValidExpected } from "./cloud-data.js";
 
 export const pendingStorageKey = (id) => `p-kakeibo-cloud-pending:${id}`;
 export const originalStorageKey = (id) => `p-kakeibo-pending-original:${id}`;
@@ -31,17 +31,7 @@ export function readPending(storage, userId) {
     && (!Number.isSafeInteger(parsed.generation) || parsed.generation < 0)) return invalid("generation");
   const report = inspectExpenses(parsed.expenses);
   if (report.issues.length) return invalid("expenses", report);
-  const ids = new Set();
-  if (parsed.expected !== null && parsed.expected !== undefined) {
-    if (!Array.isArray(parsed.expected)) return invalid("expected", report);
-    for (const item of parsed.expected) {
-      if (!item || typeof item.id !== "string" || !item.id || ids.has(item.id)
-        || typeof item.updatedAt !== "string" || !Number.isFinite(Date.parse(item.updatedAt))) {
-        return invalid("expected", report);
-      }
-      ids.add(item.id);
-    }
-  }
+  if (parsed.expected != null && !isValidExpected(parsed.expected)) return invalid("expected", report);
   return {
     state: "valid",
     raw,

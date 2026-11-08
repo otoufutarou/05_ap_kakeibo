@@ -35,12 +35,24 @@ export function validateExpenses(value) {
   return value.map((expense) => ({ ...expense }));
 }
 
-function syncError(error, syncStage) {
+export function isValidExpected(value) {
+  if (!Array.isArray(value)) return false;
+  const ids = new Set();
+  for (const item of value) {
+    if (!item || typeof item.id !== "string" || !item.id || ids.has(item.id)
+      || typeof item.updatedAt !== "string" || !Number.isFinite(Date.parse(item.updatedAt))) return false;
+    ids.add(item.id);
+  }
+  return true;
+}
+
+function syncError(error, syncStage, status = error?.status) {
   const result = new Error(error?.message || "支出の同期に失敗しました。");
   result.name = error?.name || "Error";
-  for (const key of ["code", "status", "details", "hint"]) {
+  for (const key of ["code", "details", "hint"]) {
     if (error?.[key] !== undefined) result[key] = error[key];
   }
+  if (status !== undefined) result.status = status;
   result.syncStage = syncStage;
   return result;
 }
@@ -92,7 +104,11 @@ export async function syncAccountExpenses(client, desired, expected) {
   let args;
   try {
     safeExpenses = validateExpenses(desired);
-    if (!Array.isArray(expected)) throw new TypeError("競合確認データの形式が不正です。");
+    if (!isValidExpected(expected)) {
+      const error = new Error("競合確認データのID・更新日時が不正です。元の記録は保持し、送信を停止しました。");
+      error.code = "invalid_expected";
+      throw error;
+    }
     args = {
       p_expenses: safeExpenses.map(toRow),
       p_expected: expected.map((expense) => ({
@@ -109,14 +125,20 @@ export async function syncAccountExpenses(client, desired, expected) {
   } catch (error) {
     throw syncError(error, "rpc_transport");
   }
-  if (result.error) throw syncError(result.error, "rpc_response");
+  if (result.error) throw syncError(result.error, "rpc_response", result.status ?? result.error.status);
   if (!Array.isArray(result.data)) {
     const error = new Error("RPCの成功応答に支出一覧がありません。");
     error.code = "sync_response_invalid";
     throw syncError(error, "response_parse");
   }
   try {
-    return result.data.map(fromRow);
+    const saved = result.data.map(fromRow);
+    if (!isValidExpected(saved)) {
+      const error = new Error("RPCの成功応答に正しいID・更新日時がありません。未保存の記録は保持しています。");
+      error.code = "sync_response_invalid";
+      throw error;
+    }
+    return saved;
   } catch (error) {
     throw syncError(error, "response_parse");
   }
